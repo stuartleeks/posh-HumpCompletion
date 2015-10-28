@@ -20,7 +20,7 @@ function GetCommandsWithVerbAndHumpSuffix(){
         | %{ GetCommandWithVerbAndHumpSuffix $_.Name} `
         | Group-Object Verb
     $commands = @{}
-    $commandsGroupedByVerb | %{ $commands[$_.Name] = $_.Group | group-object SuffixHumpForm -AsHashTable }
+    $commandsGroupedByVerb | %{ $commands[$_.Name] = $_.Group | group-object SuffixHumpForm }
     return $commands
 }
 function PoshHumpTabExpansion($line){
@@ -29,7 +29,7 @@ function PoshHumpTabExpansion($line){
         $suffix= $matches['suffix']
         $commands = GetCommandsWithVerbAndHumpSuffix
         if ($commands[$verb] -ne $null){
-            return $commands[$verb][$suffix] | select -ExpandProperty Command
+            return $commands[$verb] | ?{ $_.Name.StartsWith($suffix)} | select -ExpandProperty Group | select -ExpandProperty Command | sort
         }
     }
 }

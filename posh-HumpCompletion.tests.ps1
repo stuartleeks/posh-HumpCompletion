@@ -31,7 +31,7 @@ Describe "PoshHumpTabExpansion" {
 	It "provides matches filtered to prefix" {
 		,(PoshHumpTabExpansion "Set-C") | Should MatchArray @('Set-Content') # i.e. doesn't match "Command"
 	}
-	It "matches multiple items" {
-		,(PoshHumpTabExpansion "Get-C") | Should MatchArray @('Get-Content', 'Get-Command')
+	It "matches multiple items (including partial matches)" {
+		,(PoshHumpTabExpansion "Get-C") | Should MatchArray @('Get-Content', 'Get-Command', 'Get-ChildItem')
 	}
 }
