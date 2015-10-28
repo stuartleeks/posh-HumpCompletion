@@ -24,16 +24,40 @@ function GetCommandsWithVerbAndHumpSuffix(){
     return $commands
 }
 function PoshHumpTabExpansion($line){
+    if ($global:HumpCompletionCommandCache -eq $null){
+        DebugMessage -message "PoshHumpTabExpansion:loading command cache"
+        $global:HumpCompletionCommandCache = GetCommandsWithVerbAndHumpSuffix
+    }
     if($line -match "^(?<verb>\S+)-(?<suffix>[A-Z]*)"){
         $verb = $matches['verb']
         $suffix= $matches['suffix']
-        $commands = GetCommandsWithVerbAndHumpSuffix
+        $commands = $global:HumpCompletionCommandCache
         if ($commands[$verb] -ne $null){
             return $commands[$verb] | ?{ $_.Name.StartsWith($suffix)} | select -ExpandProperty Group | select -ExpandProperty Command | sort
         }
     }
 }
 
+function Clear-HumpCompletionCommandCache(){
+    [Cmdletbinding()]
+    param()
+
+    DebugMessage -message "PoshHumpTabExpansion:clearing command cache"
+    $global:HumpCompletionCommandCache = $null
+}
+function Stop-HumpCompletion(){
+    [Cmdletbinding()]
+    param()
+
+    $global:HumpCompletionEnabled = $false
+}function Start-HumpCompletion(){
+    [Cmdletbinding()]
+    param()
+
+    $global:HumpCompletionEnabled = $true
+}
+
+$global:HumpCompletionEnabled = $true # default to enabled
 
 DebugMessage -message "Installing: Test PoshHumpTabExpansionBackup function"
 if(-not (Test-Path Function:\PoshHumpTabExpansionBackup)){
@@ -46,8 +70,10 @@ if(-not (Test-Path Function:\PoshHumpTabExpansionBackup)){
     function TabExpansion($line="", $lastWord="") {
         $lastBlock = [regex]::Split($line, '[|;]')[-1].TrimStart()
 
-        DebugMessage -message "PoshHump:input: $lastBlock"
-        $result = PoshHumpTabExpansion $lastBlock
+        if ($global:HumpCompletionEnabled) {
+            DebugMessage -message "PoshHump:input: $lastBlock"
+            $result = PoshHumpTabExpansion $lastBlock
+        }
 
         if ($result -ne $null){
             $result
