@@ -50,15 +50,15 @@ function Stop-HumpCompletion(){
     param()
 
     $global:HumpCompletionEnabled = $false
-}function Start-HumpCompletion(){
+}
+function Start-HumpCompletion(){
     [Cmdletbinding()]
     param()
-
+    
     $global:HumpCompletionEnabled = $true
 }
 
-$global:HumpCompletionEnabled = $true # default to enabled
-
+# install the handler!
 DebugMessage -message "Installing: Test PoshHumpTabExpansionBackup function"
 if(-not (Test-Path Function:\PoshHumpTabExpansionBackup)){
 
@@ -82,6 +82,7 @@ if(-not (Test-Path Function:\PoshHumpTabExpansionBackup)){
             if (Test-Path Function:\PoshHumpTabExpansionBackup) { 
                 PoshHumpTabExpansionBackup $line $lastWord 
             }
-       }
+        }
     }
 }
+$global:HumpCompletionEnabled = $true

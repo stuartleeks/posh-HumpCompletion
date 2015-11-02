@@ -4,12 +4,7 @@ posh-HumpCompletion adds support for "hump completion". This means that it will 
 i.e. "Get-DC<tab>" would complete for Get-DnsClient, Get-DnsClientCache, Get-DscConfiguration, Get-DomainController etc.
 
 ## Installation
-Currently, posh-HumpCompletion is only on the [PowerShell Gallery](https://www.powershellgallery.com/packages/posh-HumpCompletion/)
-
-To install in PowerShell 5, run
-```
-	Install-Module -Name posh-HumpCompletion
-```
+TODO!
 
 ## Release notes
 
