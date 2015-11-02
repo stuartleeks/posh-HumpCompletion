@@ -4,7 +4,13 @@ posh-HumpCompletion adds support for "hump completion". This means that it will 
 i.e. "Get-DC<tab>" would complete for Get-DnsClient, Get-DnsClientCache, Get-DscConfiguration, Get-DomainController etc.
 
 ## Installation
-TODO!
+Make sure you have [chocolatey](https://chocolatey.org) installed.
+
+
+Currently the installation is only on a myget feed, so install using:
+```
+choco install posh-HumpCompletion -source "https://www.myget.org/F/posh-humpcompletion/api/v2" -pre
+```
 
 ## Release notes
 
