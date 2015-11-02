@@ -1,0 +1,1 @@
+.\tools\NuGet.exe pack posh-HumpCompletion.nuspec
