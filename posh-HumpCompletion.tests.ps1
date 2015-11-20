@@ -17,12 +17,14 @@ Describe "GetCommandWithVerbAndHumpSuffix" {
 	}
 }
 
+
 Describe "PoshHumpTabExpansion" {
 		Mock Get-Command { @( 
 		[PSCustomObject] @{'Name'= 'Get-Command'},
 		[PSCustomObject] @{'Name'= 'Get-ChildItem'},
 		[PSCustomObject] @{'Name' = 'Get-Content'},
 		[PSCustomObject] @{'Name' = 'Set-Content'},
+		[PSCustomObject] @{'Name' = 'Get-CimInstance'},
 		[PSCustomObject] @{'Name' = 'Switch-AzureMode'}		
 	)}
 	It "ignores commands when no matching prefix" {
@@ -32,6 +34,9 @@ Describe "PoshHumpTabExpansion" {
 		,(PoshHumpTabExpansion "Set-C") | Should MatchArray @('Set-Content') # i.e. doesn't match "Command"
 	}
 	It "matches multiple items (including partial matches)" {
-		,(PoshHumpTabExpansion "Get-C") | Should MatchArray @('Get-Content', 'Get-Command', 'Get-ChildItem')
+		,(PoshHumpTabExpansion "Get-C") | Should MatchArray @('Get-Content', 'Get-Command', 'Get-ChildItem', 'Get-CimInstance')
+	}
+	It "matches multiple items - multihump (including partial matches)" {
+		,(PoshHumpTabExpansion "Get-CI") | Should MatchArray @('Get-ChildItem', 'Get-CimInstance')
 	}
 }
