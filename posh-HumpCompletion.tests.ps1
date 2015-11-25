@@ -4,6 +4,8 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path).Replace(".tests.", ".")
 
 Import-Module "$here\PesterMatchArray.psm1" -Force
 
+$global:HumpCompletionCommandCache=$null #clear cache in case left over from installation etc!
+
 Describe "GetCommandWithVerbAndHumpSuffix" {
 	It "handles single hump" {
 		$result = GetCommandWithVerbAndHumpSuffix "Get-Command"
@@ -19,13 +21,13 @@ Describe "GetCommandWithVerbAndHumpSuffix" {
 
 
 Describe "PoshHumpTabExpansion" {
-		Mock Get-Command { @( 
-		[PSCustomObject] @{'Name'= 'Get-Command'},
-		[PSCustomObject] @{'Name'= 'Get-ChildItem'},
-		[PSCustomObject] @{'Name' = 'Get-Content'},
-		[PSCustomObject] @{'Name' = 'Set-Content'},
-		[PSCustomObject] @{'Name' = 'Get-CimInstance'},
-		[PSCustomObject] @{'Name' = 'Switch-AzureMode'}		
+	Mock Get-Command { @( 
+				[PSCustomObject] @{'Name' = 'Get-Command'},
+				[PSCustomObject] @{'Name' = 'Get-ChildItem'},
+				[PSCustomObject] @{'Name' = 'Get-Content'},
+				[PSCustomObject] @{'Name' = 'Set-Content'},
+				[PSCustomObject] @{'Name' = 'Get-CimInstance'},
+				[PSCustomObject] @{'Name' = 'Switch-AzureMode'}		
 	)}
 	It "ignores commands when no matching prefix" {
 		,(PoshHumpTabExpansion "Foo-C") | Should Be $null
