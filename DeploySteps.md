@@ -10,7 +10,7 @@ The steps are:
 * push changes + tag
 * Run `BuildPackage.ps1` to create nuget package
 * Use tools/NuGet.exe to publish to myget feed (`.\tools\NuGet.exe push .\posh-HumpCompletion.0.0.11.nupkg -Source https://www.myget.org/F/posh-humpcompletion/api/v2/package`)
-* Use Publish-Module cmdlet to publish to PowerShell Gallery (Publish-Module -NuGetApiKey &lt;key here&gt; -Path .\)
+* Use Publish-Module cmdlet to publish to PowerShell Gallery (`Publish-Module -NuGetApiKey $key -Path .\`)
 
 ## Future
 * Start scripting some of this!
