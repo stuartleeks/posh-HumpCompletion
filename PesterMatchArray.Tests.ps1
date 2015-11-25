@@ -16,27 +16,52 @@ function Test-NegativeAssertion($result) {
     }
 }
 
-Describe "PesterMatchArray" {
+Describe "PesterMatchArrayUnordered" {
     It "returns true for matching single item arrays" {
-        Test-PositiveAssertion (PesterMatchArray @("a") @("a"))
+        Test-PositiveAssertion (PesterMatchArrayUnordered @("a") @("a"))
     }
     It "returns true for matching single item and single item array" {
-        Test-PositiveAssertion (PesterMatchArray "a" @("a"))
+        Test-PositiveAssertion (PesterMatchArrayUnordered "a" @("a"))
     }
     It "returns true for matching single item array and single item" {
-        Test-PositiveAssertion (PesterMatchArray @("a") "a")
+        Test-PositiveAssertion (PesterMatchArrayUnordered @("a") "a")
     }
     It "returns true for arrays with the same contents" {
-        Test-PositiveAssertion (PesterMatchArray @("a", 1) @("a",1))
+        Test-PositiveAssertion (PesterMatchArrayUnordered @("a", 1) @("a",1))
     }
     It "returns true for arrays with the same contents in different orders" {
-        Test-PositiveAssertion (PesterMatchArray @("a", 1) @(1,"a"))
+        Test-PositiveAssertion (PesterMatchArrayUnordered @("a", 1) @(1,"a"))
     }
 
     It "returns false if arrays differ in content" {
-        Test-NegativeAssertion (PesterMatchArray @(1) @(2))
+        Test-NegativeAssertion (PesterMatchArrayUnordered @(1) @(2))
     }
     It "returns false if arrays differ in length" {
-        Test-NegativeAssertion (PesterMatchArray @(1) @(1, 1))
+        Test-NegativeAssertion (PesterMatchArrayUnordered @(1) @(1, 1))
+    }
+}
+
+Describe "PesterMatchArrayOrdered" {
+    It "returns true for matching single item arrays" {
+        Test-PositiveAssertion (PesterMatchArrayOrdered @("a") @("a"))
+    }
+    It "returns true for matching single item and single item array" {
+        Test-PositiveAssertion (PesterMatchArrayOrdered "a" @("a"))
+    }
+    It "returns true for matching single item array and single item" {
+        Test-PositiveAssertion (PesterMatchArrayOrdered @("a") "a")
+    }
+    It "returns true for arrays with the same contents in the same order" {
+        Test-PositiveAssertion (PesterMatchArrayOrdered @("a", 1) @("a",1))
+    }
+    It "returns false for arrays with the same contents in different orders" {
+        Test-NegativeAssertion (PesterMatchArrayOrdered @("a", 1) @(1,"a"))
+    }
+
+    It "returns false if arrays differ in content" {
+        Test-NegativeAssertion (PesterMatchArrayOrdered @(1) @(2))
+    }
+    It "returns false if arrays differ in length" {
+        Test-NegativeAssertion (PesterMatchArrayOrdered @(1) @(1, 1))
     }
 }

@@ -33,12 +33,14 @@ Describe "PoshHumpTabExpansion" {
 		,(PoshHumpTabExpansion "Foo-C") | Should Be $null
 	}
 	It "provides matches filtered to prefix" {
-		,(PoshHumpTabExpansion "Set-C") | Should MatchArray @('Set-Content') # i.e. doesn't match "Command"
+		,(PoshHumpTabExpansion "Set-C") | Should MatchArrayOrdered @('Set-Content') # i.e. doesn't match "Command"
 	}
 	It "matches multiple items (including partial matches)" {
-		,(PoshHumpTabExpansion "Get-C") | Should MatchArray @('Get-Content', 'Get-Command', 'Get-ChildItem', 'Get-CimInstance')
+		# TODO - want to have this ordered by exact hump match first!
+		#,(PoshHumpTabExpansion "Get-C") | Should MatchArrayOrdered @('Get-Content', 'Get-Command', 'Get-ChildItem', 'Get-CimInstance')
+		,(PoshHumpTabExpansion "Get-C") | Should MatchArrayOrdered @('Get-ChildItem', 'Get-CimInstance', 'Get-Command', 'Get-Content')
 	}
 	It "matches multiple items - multihump (including partial matches)" {
-		,(PoshHumpTabExpansion "Get-CI") | Should MatchArray @('Get-ChildItem', 'Get-CimInstance')
+		,(PoshHumpTabExpansion "Get-CI") | Should MatchArrayOrdered @('Get-ChildItem', 'Get-CimInstance')
 	}
 }
