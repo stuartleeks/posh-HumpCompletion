@@ -1,8 +1,8 @@
-function DebugMessage($message){
+function DebugMessage($message) {
     [System.Diagnostics.Debug]::WriteLine("PoshHump:$message")
 }
 
-function GetCommandWithVerbAndHumpSuffix($commandName){
+function GetCommandWithVerbAndHumpSuffix($commandName) {
     $separatorIndex = $commandName.IndexOf('-')
     if ($separatorIndex -ge 0){
         $verb = $commandName.SubString(0, $separatorIndex)
@@ -14,31 +14,31 @@ function GetCommandWithVerbAndHumpSuffix($commandName){
         }
     }    
 }
-function GetCommandsWithVerbAndHumpSuffix(){
+function GetCommandsWithVerbAndHumpSuffix() {
     # TODO - add caching
     $commandsGroupedByVerb = Get-Command `
-        | %{ GetCommandWithVerbAndHumpSuffix $_.Name} `
+        | ForEach-Object { GetCommandWithVerbAndHumpSuffix $_.Name} `
         | Group-Object Verb
     $commands = @{}
-    $commandsGroupedByVerb | %{ $commands[$_.Name] = $_.Group | group-object SuffixHumpForm }
+    $commandsGroupedByVerb | ForEach-Object { $commands[$_.Name] = $_.Group | group-object SuffixHumpForm }
     return $commands
 }
-function PoshHumpTabExpansion($line){
-    if ($global:HumpCompletionCommandCache -eq $null){
+function PoshHumpTabExpansion($line) {
+    if ($global:HumpCompletionCommandCache -eq $null) {
         DebugMessage -message "PoshHumpTabExpansion:loading command cache"
         $global:HumpCompletionCommandCache = GetCommandsWithVerbAndHumpSuffix
     }
-    if($line -match "^(?<verb>\S+)-(?<suffix>[A-Z]*)"){
+    if($line -match "^(?<verb>\S+)-(?<suffix>[A-Z]*)") {
         $verb = $matches['verb']
         $suffix= $matches['suffix']
         $commands = $global:HumpCompletionCommandCache
-        if ($commands[$verb] -ne $null){
+        if ($commands[$verb] -ne $null) {
             return $commands[$verb] | ?{ $_.Name.StartsWith($suffix)} | select -ExpandProperty Group | select -ExpandProperty Command | sort
         }
     }
 }
 
-function Clear-HumpCompletionCommandCache(){
+function Clear-HumpCompletionCommandCache() {
     [Cmdletbinding()]
     param()
 
@@ -60,7 +60,7 @@ function Start-HumpCompletion(){
 
 # install the handler!
 DebugMessage -message "Installing: Test PoshHumpTabExpansionBackup function"
-if(-not (Test-Path Function:\PoshHumpTabExpansionBackup)){
+if (-not (Test-Path Function:\PoshHumpTabExpansionBackup)) {
 
     if (Test-Path Function:\TabExpansion) {
         DebugMessage -message "Installing: Backup TabExpansion function"
@@ -75,7 +75,7 @@ if(-not (Test-Path Function:\PoshHumpTabExpansionBackup)){
             $result = PoshHumpTabExpansion $lastBlock
         }
 
-        if ($result -ne $null){
+        if ($result -ne $null) {
             $result
         } else {
             # Fall back on existing tab expansion
