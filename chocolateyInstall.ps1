@@ -41,4 +41,4 @@ Import-Module posh-HumpCompletion
 
 "@ | Out-File $PROFILE -Append -Encoding (Get-FileEncoding $PROFILE)
 
-Write-Host "You will need to restart your PowerShell session (or reload your profile using "". `    $PROFILE"""
+Write-Host "You will need to restart your PowerShell session (or reload your profile using "". `    $PROFILE"")"
