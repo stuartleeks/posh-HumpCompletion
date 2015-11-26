@@ -2,8 +2,6 @@ $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path).Replace(".tests.", ".")
 . "$here\$sut"
 
-Import-Module "$here\PesterMatchArray.psm1" -Force
-
 $global:HumpCompletionCommandCache=$null #clear cache in case left over from installation etc!
 
 Describe "GetCommandWithVerbAndHumpSuffix" {

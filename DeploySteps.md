@@ -1,6 +1,12 @@
 # Deployment steps
 This is a note to myself to help ensure consistency as I release versions. At some point this should move from being a doc to being a script ;-)
 
+## Requirements for build/test
+Testing this module requires
+* [Pester](https://github.com/pester/pester) 
+* [PesterMatchArray](https://github.com/stuartleeks/PesterMatchArray) 
+
+
 ## Steps
 The steps are:
 * Update version number in `posh-HumpCompletion.psd1`
