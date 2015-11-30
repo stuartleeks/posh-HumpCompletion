@@ -43,7 +43,7 @@ function PoshHumpTabExpansion($line) {
         DebugMessage -message "PoshHumpTabExpansion:loading command cache"
         $global:HumpCompletionCommandCache = GetCommandsWithVerbAndHumpSuffix
     }
-    if($line -match "^(?<verb>\S+)-(?<suffix>[A-Z]*)") {
+    if($line -match "^(?<verb>\S+)-(?<suffix>[A-Z]*)$") {
         $command = $matches[0]
         $commandInfo = GetCommandWithVerbAndHumpSuffix $command
         $verb = $matches['verb']
