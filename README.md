@@ -37,7 +37,7 @@ If you load new modules or otherwise change the set of commands (Azure PowerShel
 ## Release notes
 
 
-### Version 0.1.2- 30th November 2015
+### Version 0.1.3- 30th November 2015
 Pushed to myget feed 30th November 2015
 
 Fix parameter completion bug
