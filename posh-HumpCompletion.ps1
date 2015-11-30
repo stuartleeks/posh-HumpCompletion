@@ -50,7 +50,6 @@ function PoshHumpTabExpansion($line) {
         $suffix= $matches['suffix']
         $suffixWildcardForm = GetWildcardSuffixForm $suffix 
         $wildcardForm = "$verb-$suffixWildcardForm"
-        Add-Content -Path "c:\temp\phc.txt" -Value "$suffix, $suffixWildcardForm"
         $commands = $global:HumpCompletionCommandCache
         if ($commands[$verb] -ne $null) {
             return $commands[$verb] `
