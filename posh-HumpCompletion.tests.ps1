@@ -17,7 +17,17 @@ Describe "GetCommandWithVerbAndHumpSuffix" {
 	}
 }
 
-
+Describe "GetWildcardSuffixForm" {
+	It "returns wildcard for null" {
+		GetWildcardSuffixForm $null | Should Be "*"
+	}
+	It "returns wildcard for empty string" {
+		GetWildcardSuffixForm "" | Should Be "*"
+	}		
+	It "returns multiple wildcard for multihump string" {
+		GetWildcardSuffixForm "AzRV" | Should Be "Az*R*V*"
+	} 
+}
 Describe "PoshHumpTabExpansion" {
 	Mock Get-Command { @( 
 				[PSCustomObject] @{'Name' = 'Get-Command'},
@@ -37,6 +47,11 @@ Describe "PoshHumpTabExpansion" {
 		# TODO - want to have this ordered by exact hump match first!
 		#,(PoshHumpTabExpansion "Get-C") | Should MatchArrayOrdered @('Get-Content', 'Get-Command', 'Get-ChildItem', 'Get-CimInstance')
 		,(PoshHumpTabExpansion "Get-C") | Should MatchArrayOrdered @('Get-ChildItem', 'Get-CimInstance', 'Get-Command', 'Get-Content')
+	}
+	It "matches with lower-case filter" {
+		# TODO - want to have this ordered by exact hump match first!
+		#,(PoshHumpTabExpansion "Get-C") | Should MatchArrayOrdered @('Get-Content', 'Get-Command', 'Get-ChildItem', 'Get-CimInstance')
+		,(PoshHumpTabExpansion "Get-ChI") | Should MatchArrayOrdered @('Get-ChildItem')
 	}
 	It "matches multiple items - multihump (including partial matches)" {
 		,(PoshHumpTabExpansion "Get-CI") | Should MatchArrayOrdered @('Get-ChildItem', 'Get-CimInstance')

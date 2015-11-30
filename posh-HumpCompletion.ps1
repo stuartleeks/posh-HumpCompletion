@@ -23,17 +23,46 @@ function GetCommandsWithVerbAndHumpSuffix() {
     $commandsGroupedByVerb | ForEach-Object { $commands[$_.Name] = $_.Group | group-object SuffixHumpForm }
     return $commands
 }
+function GetWildcardSuffixForm($suffix){
+    # create a wildcard form of a suffix. E.g. for "AzRGr" return "Az*R*Gr*"
+    if ($suffix -eq $null -or $suffix.Length -eq 0){
+        return "*"
+    }
+    $result = $suffix[0]
+    for($i=1 ; $i -lt $suffix.Length ; $i++){
+        if ([char]::IsUpper($suffix[$i])) {
+            $result += "*"
+        }
+        $result += $suffix[$i]
+    }
+    $result += "*"
+    return $result
+}
 function PoshHumpTabExpansion($line) {
     if ($global:HumpCompletionCommandCache -eq $null) {
         DebugMessage -message "PoshHumpTabExpansion:loading command cache"
         $global:HumpCompletionCommandCache = GetCommandsWithVerbAndHumpSuffix
     }
     if($line -match "^(?<verb>\S+)-(?<suffix>[A-Z]*)") {
+        $command = $matches[0]
+        $commandInfo = GetCommandWithVerbAndHumpSuffix $command
         $verb = $matches['verb']
         $suffix= $matches['suffix']
+        $suffixWildcardForm = GetWildcardSuffixForm $suffix 
+        $wildcardForm = "$verb-$suffixWildcardForm"
+        Add-Content -Path "c:\temp\phc.txt" -Value "$suffix, $suffixWildcardForm"
         $commands = $global:HumpCompletionCommandCache
         if ($commands[$verb] -ne $null) {
-            return $commands[$verb] | ?{ $_.Name.StartsWith($suffix)} | select -ExpandProperty Group | select -ExpandProperty Command | sort
+            return $commands[$verb] `
+                | Where-Object { 
+                    # $_.Name is suffix hump form
+                    # Match on hump form of completion word
+                    $_.Name.StartsWith($commandInfo.SuffixHumpForm)
+                } `
+                | Select-Object -ExpandProperty Group `
+                | Select-Object -ExpandProperty Command `
+                | Where-Object { $_ -like $wildcardForm } `
+                | Sort-Object
         }
     }
 }
