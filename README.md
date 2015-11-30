@@ -43,6 +43,11 @@ Pushed to myget feed
 
 Fixed some typos/script styling - thanks @korygill ;-)
 
+### Version 0.1.0 - 30th November 2015
+Pushed to myget feed 30th November 2015
+
+Added support for partial matching, i.e. `Get-AzRSub<tab>` will match `Get-AzureRmSubscription`
+
 ### Version 0.0.8 - 2nd November 2015
 Pushed to myget feed 2nd November 2015
 
