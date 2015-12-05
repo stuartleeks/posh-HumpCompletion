@@ -29,6 +29,8 @@ If you have a command that you want to complete for then you can type the capita
 E.g. for Get-AzureResourceGroup you can use `Get-ARG<tab>`
 Repeated tabs will cycle matches (in this case, Get-AzureResourceGroupDeployment etc)
 
+![posh-HumpCompletion in action](images/posh-HumpCompletion.gif)
+
 ### Tips
 For performance, posh-HumpCompletion caches the loaded commands. 
 If you load new modules or otherwise change the set of commands (Azure PowerShell & Switch-AzureMode, I'm looking at you!) then run `Clear-HumpCompletionCommandCache` to reset. 
