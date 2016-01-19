@@ -11,7 +11,7 @@ function GetCommandWithVerbAndHumpSuffix($commandName) {
             "Verb" = $verb
             "SuffixHumpForm" = $suffix -creplace "[a-z]","" # case sensitive replace
             "Command" = $commandName 
-        }
+        }   
     }    
 }
 function GetCommandsWithVerbAndHumpSuffix() {
@@ -39,11 +39,12 @@ function GetWildcardSuffixForm($suffix){
     return $result
 }
 function PoshHumpTabExpansion($line) {
-    if ($global:HumpCompletionCommandCache -eq $null) {
-        DebugMessage -message "PoshHumpTabExpansion:loading command cache"
-        $global:HumpCompletionCommandCache = GetCommandsWithVerbAndHumpSuffix
-    }
+
     if($line -match "^(?<verb>\S+)-(?<suffix>[A-Z]*)$") {
+        if ($global:HumpCompletionCommandCache -eq $null) {
+            DebugMessage -message "PoshHumpTabExpansion:loading command cache"
+            $global:HumpCompletionCommandCache = GetCommandsWithVerbAndHumpSuffix
+        }
         $command = $matches[0]
         $commandInfo = GetCommandWithVerbAndHumpSuffix $command
         $verb = $matches['verb']
