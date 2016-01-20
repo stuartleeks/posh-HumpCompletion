@@ -1,5 +1,9 @@
 function DebugMessage($message) {
-    [System.Diagnostics.Debug]::WriteLine("PoshHump:$message")
+    $threadId = [System.Threading.Thread]::CurrentThread.ManagedThreadId
+    $appDomainId = [AppDomain]::CurrentDomain.Id
+    [System.Diagnostics.Debug]::WriteLine("PoshHump: $threadId : $appDomainId :$message")
+
+    [System.Diagnostics.Debug]::WriteLine("PoshHump: $message")
 }
 
 function GetCommandWithVerbAndHumpSuffix($commandName) {
@@ -38,13 +42,51 @@ function GetWildcardSuffixForm($suffix){
     $result += "*"
     return $result
 }
+$Powershell = $null
+$Runspace = $null
+function EnsureHumpCompletionCommandCache(){
+    if ($global:HumpCompletionCommandCache -eq $null) {
+        if ($script:runspace -eq $null) {
+            DebugMessage -message "loading command cache"
+            $global:HumpCompletionCommandCache = GetCommandsWithVerbAndHumpSuffix
+        } else {
+            DebugMessage -message "loading command cache - wait on async load"
+            $foo = $script:Runspace.AsyncWaitHandle.WaitOne()
+            $global:HumpCompletionCommandCache = $script:powershell.EndInvoke($script:iar).result
+            $script:Powershell.Dispose()
+            $script:Runspace.Close()
+            $script:Runspace = $null            
+            DebugMessage -message "loading command cache - async load commplete $($global:HumpCompletionCommandCache.Count)"
+        }
+    }
+}
+function LoadHumpCompletionCommandCacheAsync(){
+    DebugMessage -message "LoadHumpCompletionCommandCacheAsync"
+    if ($script:Runspace -eq $null) {
+        DebugMessage -message "LoadHumpCompletionCommandCacheAsync - starting..."
+        $script:Runspace = [RunspaceFactory]::CreateRunspace()
+        $script:Runspace.Open()
+        # Set variable to prevent installation of the TabExpansion function in the created runspace
+        # Otherwise we end up recursively spinning up runspaces to load the commands!
+        $script:Runspace.SessionStateProxy.SetVariable('poshhumpSkipTabCompletionInstall',$true)
+
+        $script:Powershell = [PowerShell]::Create()
+        $script:Powershell.Runspace = $script:Runspace
+
+        $scriptBlock = {
+            $result = GetCommandsWithVerbAndHumpSuffix
+            @{ "result" = $result} # work around group enumeration as it loses the grouping!
+        }
+        $script:Powershell.AddScript($scriptBlock) | out-null
+        
+        $script:iar = $script:PowerShell.BeginInvoke()
+    }
+}
 function PoshHumpTabExpansion($line) {
 
     if($line -match "^(?<verb>\S+)-(?<suffix>[A-Z]*)$") {
-        if ($global:HumpCompletionCommandCache -eq $null) {
-            DebugMessage -message "PoshHumpTabExpansion:loading command cache"
-            $global:HumpCompletionCommandCache = GetCommandsWithVerbAndHumpSuffix
-        }
+        EnsureHumpCompletionCommandCache
+        
         $command = $matches[0]
         $commandInfo = GetCommandWithVerbAndHumpSuffix $command
         $verb = $matches['verb']
@@ -89,29 +131,34 @@ function Start-HumpCompletion(){
 
 # install the handler!
 DebugMessage -message "Installing: Test PoshHumpTabExpansionBackup function"
-if (-not (Test-Path Function:\PoshHumpTabExpansionBackup)) {
+if ($poshhumpSkipTabCompletionInstall){
+    DebugMessage -message "Skipping tab expansion installation"
+} else {
+    if (-not (Test-Path Function:\PoshHumpTabExpansionBackup)) {
 
-    if (Test-Path Function:\TabExpansion) {
-        DebugMessage -message "Installing: Backup TabExpansion function"
-        Rename-Item Function:\TabExpansion PoshHumpTabExpansionBackup
-    }
-
-    function TabExpansion($line="", $lastWord="") {
-        $lastBlock = [regex]::Split($line, '[|;]')[-1].TrimStart()
-
-        if ($global:HumpCompletionEnabled) {
-            DebugMessage -message "PoshHump:input: $lastBlock"
-            $result = PoshHumpTabExpansion $lastBlock
+        if (Test-Path Function:\TabExpansion) {
+            DebugMessage -message "Installing: Backup TabExpansion function"
+            Rename-Item Function:\TabExpansion PoshHumpTabExpansionBackup
         }
 
-        if ($result -ne $null) {
-            $result
-        } else {
-            # Fall back on existing tab expansion
-            if (Test-Path Function:\PoshHumpTabExpansionBackup) { 
-                PoshHumpTabExpansionBackup $line $lastWord 
+        function TabExpansion($line="", $lastWord="") {
+            $lastBlock = [regex]::Split($line, '[|;]')[-1].TrimStart()
+
+            if ($global:HumpCompletionEnabled) {
+                DebugMessage -message "PoshHump:input: $lastBlock"
+                $result = PoshHumpTabExpansion $lastBlock
+            }
+
+            if ($result -ne $null) {
+                $result
+            } else {
+                # Fall back on existing tab expansion
+                if (Test-Path Function:\PoshHumpTabExpansionBackup) { 
+                    PoshHumpTabExpansionBackup $line $lastWord 
+                }
             }
         }
+        LoadHumpCompletionCommandCacheAsync
     }
 }
 $global:HumpCompletionEnabled = $true

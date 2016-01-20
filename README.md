@@ -38,8 +38,13 @@ If you load new modules or otherwise change the set of commands (Azure PowerShel
 
 ## Release notes
 
+### Version 0.1.4 - ** DATE **
+Pushed to myget feed ** DATE **
 
-### Version 0.1.3- 30th November 2015
+Update to only check command cache when participating in completion
+Update to start loading the command cache in the background when the module loads
+
+### Version 0.1.3 - 30th November 2015
 Pushed to myget feed 30th November 2015
 
 Fix parameter completion bug
