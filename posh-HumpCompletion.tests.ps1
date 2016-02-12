@@ -1,5 +1,6 @@
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path).Replace(".tests.", ".")
+$global:poshhumpSkipTabCompletionInstall = $true
 . "$here\$sut"
 
 $global:HumpCompletionCommandCache=$null #clear cache in case left over from installation etc!
