@@ -3,6 +3,10 @@ When working with some PowerShell modules, there can be a large number of cmdlet
 posh-HumpCompletion adds support for "hump completion". This means that it will use the capitals in the cmdlet name as the identifiers, 
 i.e. `"Get-DC<tab>"` would complete for Get-DnsClient, Get-DnsClientCache, Get-DscConfiguration, Get-DomainController etc.
 
+
+[![Build status](https://ci.appveyor.com/api/projects/status/5xe5etshcfraftex?svg=true)](https://ci.appveyor.com/project/stuartleeks/posh-humpcompletion)
+
+
 ## Installation
 
 ### PowerShell Gallery
