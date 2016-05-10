@@ -2,7 +2,7 @@
     <package>
         <metadata>
             <id>posh-HumpCompletion</id>
-            <version>0.1.4</version>
+            <version>0.2.0</version>
             <authors>Stuart Leeks</authors>
             <owners>Stuart Leeks</owners>
             <licenseUrl>https://github.com/stuartleeks/posh-HumpCompletion/blob/master/LICENSE.md</licenseUrl>
