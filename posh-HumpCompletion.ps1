@@ -143,8 +143,8 @@ function PoshHumpTabExpansion2(
             DebugMessage "cmd: Count=$($completionMatches.Length), values=$msg"
         
             $result = [PSCustomObject]@{
-                ReplacementIndex = $command.Extent.StartOffset;
-                ReplacementLength = $command.Extent.EndOffset - $command.Extent.StartOffset;
+                ReplacementIndex = $commandAst.Extent.StartOffset;
+                ReplacementLength = $commandAst.Extent.EndOffset - $commandAst.Extent.StartOffset;
                 CompletionMatches = $completionMatches
             };
         }
