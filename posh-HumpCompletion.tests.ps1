@@ -29,7 +29,12 @@ Describe "GetWildcardSuffixForm" {
 		GetWildcardSuffixForm "AzRV" | Should Be "Az*R*V*"
 	} 
 }
-Describe "PoshHumpTabExpansion" {
+function PoshTabExpansion2Wrapper ($line) {
+	$tokens = $null;
+	$ast = [System.Management.Automation.Language.Parser]::ParseInput($line, [ref]$tokens, [ref]$null)
+	(PoshHumpTabExpansion2 $ast $line.Length).CompletionMatches
+}
+Describe "PoshHumpTabExpansion2 - basic completion" {
 	Mock Get-Command { @( 
 				[PSCustomObject] @{'Name' = 'Get-Command'},
 				[PSCustomObject] @{'Name' = 'Get-ChildItem'},
@@ -39,22 +44,30 @@ Describe "PoshHumpTabExpansion" {
 				[PSCustomObject] @{'Name' = 'Switch-AzureMode'}		
 	)}
 	It "ignores commands when no matching prefix" {
-		,(PoshHumpTabExpansion "Foo-C") | Should Be $null
+		,(PoshTabExpansion2Wrapper "Foo-C") | Should Be $null
 	}
 	It "provides matches filtered to prefix" {
-		,(PoshHumpTabExpansion "Set-C") | Should MatchArrayOrdered @('Set-Content') # i.e. doesn't match "Command"
+		,(PoshTabExpansion2Wrapper "Set-C") | Should MatchArrayOrdered @('Set-Content') # i.e. doesn't match "Command"
 	}
 	It "matches multiple items (including partial matches)" {
 		# TODO - want to have this ordered by exact hump match first!
 		#,(PoshHumpTabExpansion "Get-C") | Should MatchArrayOrdered @('Get-Content', 'Get-Command', 'Get-ChildItem', 'Get-CimInstance')
-		,(PoshHumpTabExpansion "Get-C") | Should MatchArrayOrdered @('Get-ChildItem', 'Get-CimInstance', 'Get-Command', 'Get-Content')
+		,(PoshTabExpansion2Wrapper "Get-C") | Should MatchArrayOrdered @('Get-ChildItem', 'Get-CimInstance', 'Get-Command', 'Get-Content')
 	}
 	It "matches with lower-case filter" {
 		# TODO - want to have this ordered by exact hump match first!
 		#,(PoshHumpTabExpansion "Get-C") | Should MatchArrayOrdered @('Get-Content', 'Get-Command', 'Get-ChildItem', 'Get-CimInstance')
-		,(PoshHumpTabExpansion "Get-ChI") | Should MatchArrayOrdered @('Get-ChildItem')
+		,(PoshTabExpansion2Wrapper "Get-ChI") | Should MatchArrayOrdered @('Get-ChildItem')
 	}
 	It "matches multiple items - multihump (including partial matches)" {
-		,(PoshHumpTabExpansion "Get-CI") | Should MatchArrayOrdered @('Get-ChildItem', 'Get-CimInstance')
+		,(PoshTabExpansion2Wrapper "Get-CI") | Should MatchArrayOrdered @('Get-ChildItem', 'Get-CimInstance')
+	}
+	It "does not complete when trailing spaces" {
+		,(PoshTabExpansion2Wrapper "Get-CI ") | Should Be $null
 	}
 }
+
+# TODO
+#  * add tests for complation of parameter names
+#  * add tests for completion in the middle of a string
+#  * add tests for completion of variable names

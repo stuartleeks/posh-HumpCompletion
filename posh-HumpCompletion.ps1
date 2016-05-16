@@ -82,22 +82,44 @@ function LoadHumpCompletionCommandCacheAsync(){
         $script:iar = $script:PowerShell.BeginInvoke()
     }
 }
-function PoshHumpTabExpansion2($ast){
+function PoshHumpTabExpansion2(
+    [System.Management.Automation.Language.Ast]$ast, 
+    [int]$offset){
     
     $result = $null;
-    DebugMessage "In PoshHumpTabExpansion2"
+    DebugMessage "In PoshHumpTabExpansion2 - offset $offset"
     $statements = $ast.EndBlock.Statements
     $command = $statements.PipelineElements[$statements.PipelineElements.Count-1]
     $commandName = $command.GetCommandName()
     $commandElements = $command.CommandElements
+        DebugMessage "Command name: $commandName"
 
-    DebugMessage "$commandName"
 
-    if ( $commandElements.Count -eq 1) {         
-        ## if 1 command element then just the command (rather than parameters)
-        DebugMessage "single cmd element: $commandName"      
-        EnsureHumpCompletionCommandCache
+    # We want to find any NamedAttributeArgumentAst objects where the Ast extent includes $offset
+    $offsetInExtentPredicate = {
+        param($astToTest)
+        return $offset -gt $astToTest.Extent.StartOffset -and
+                $offset -le $astToTest.Extent.EndOffset
+    }
+    $asts = $ast.FindAll($offsetInExtentPredicate, $true)
+    $astCount = $asts.Count;
+    
+    $msg = ($asts | %{ $_.GetType().Name})  -join ", "
+    DebugMessage "AstsInExtent ($astCount): $msg"
+    
+    
+    if ($astCount -gt 2 `
+            -and $asts[$astCount-2] -is [System.Management.Automation.Language.CommandAst] `
+            -and $asts[$astCount-1] -is [System.Management.Automation.Language.StringConstantExpressionAst])    {
+        # AST chain ends with CommandAst, StringConstantExpressionAst
         
+        $commandAst = $asts[$astCount-2]
+        $extentStart = $commandAst.Extent.StartOffset
+        $extentEnd = $commandAst.Extent.EndOffset
+        $commandName = $commandAst.CommandElements.Value.Substring(0, $extentEnd - $extentStart)
+        DebugMessage "CommandAst match: $($commandAst.GetCommandName()) - $($extentStart):$($extentEnd), $commandName"
+        
+        EnsureHumpCompletionCommandCache
         $commandInfo = GetCommandWithVerbAndHumpSuffix $commandName
         $verb = $commandInfo.Verb
         $suffix= $commandInfo.Suffix
@@ -113,16 +135,54 @@ function PoshHumpTabExpansion2($ast){
                 } `
                 | Select-Object -ExpandProperty Group `
                 | Select-Object -ExpandProperty Command `
-                | Where-Object { $_ -like $wildcardForm } `
+                | Where-Object { $_ -clike $wildcardForm } `
                 | Sort-Object
                 
+                
+            $msg = $completionMatches -join ", "
+            DebugMessage "cmd: Count=$($completionMatches.Length), values=$msg"
+        
             $result = [PSCustomObject]@{
                 ReplacementIndex = $command.Extent.StartOffset;
                 ReplacementLength = $command.Extent.EndOffset - $command.Extent.StartOffset;
                 CompletionMatches = $completionMatches
             };
         }
-    } elseif ($commandElements.Count -gt 1 -and $commandElements[$commandElements.Count-1].GetType().Name -eq "CommandParameterAst"){
+        
+    # } elseif ( $commandElements.Count -eq 1) {         
+    #     ## if 1 command element then just the command (rather than parameters)
+    #     DebugMessage "single cmd element: $commandName"      
+    #     EnsureHumpCompletionCommandCache
+        
+    #     $commandInfo = GetCommandWithVerbAndHumpSuffix $commandName
+    #     $verb = $commandInfo.Verb
+    #     $suffix= $commandInfo.Suffix
+    #     $suffixWildcardForm = GetWildcardSuffixForm $suffix 
+    #     $wildcardForm = "$verb-$suffixWildcardForm"
+    #     $commands = $global:HumpCompletionCommandCache
+    #     if ($commands[$verb] -ne $null) {
+    #         $completionMatches = $commands[$verb] `
+    #             | Where-Object { 
+    #                 # $_.Name is suffix hump form
+    #                 # Match on hump form of completion word
+    #                 $_.Name.StartsWith($commandInfo.SuffixHumpForm)
+    #             } `
+    #             | Select-Object -ExpandProperty Group `
+    #             | Select-Object -ExpandProperty Command `
+    #             | Where-Object { $_ -clike $wildcardForm } `
+    #             | Sort-Object
+                
+                
+    #         $msg = $completionMatches -join ", "
+    #         DebugMessage "cmd: Count=$($completionMatches.Length), values=$msg"
+        
+    #         $result = [PSCustomObject]@{
+    #             ReplacementIndex = $command.Extent.StartOffset;
+    #             ReplacementLength = $command.Extent.EndOffset - $command.Extent.StartOffset;
+    #             CompletionMatches = $completionMatches
+    #         };
+    #     }
+    } elseif ($commandElements.Count -gt 1 -and $commandElements[$commandElements.Count-1] -is [System.Management.Automation.Language.CommandParameterAst]){
         
         $command = Get-Command  $commandName -ShowCommandInfo
         if ($command.CommandType -eq "Alias") {
@@ -133,19 +193,29 @@ function PoshHumpTabExpansion2($ast){
         $parameterElement = $commandElements[$commandElements.Count -1]
         $parameterName = $parameterElement.ParameterName 
         $wildcardForm = GetWildcardSuffixForm $parameterName
+        $wildcardForm = "-" + $wildcardForm
         DebugMessage "multi cmd element. Parameter: '$parameterName', wildcardForm: $wildcardForm"      
         # TODO - look at whether we can determine the parameter set to be smarter about the parameters we complete
         $completionMatches = $command.ParameterSets `
                                 | Select-Object -ExpandProperty Parameters `
                                 | Select-Object -ExpandProperty Name -Unique `
-                                | Where-Object { $_ -clike $wildcardForm } `
+                                | ForEach-Object { "-$($_)" } `
+                                | Where-Object { 
+                                    # DebugMessage "Match test '$_', '$wildcardForm', match $($_ -clike $wildcardForm)"
+                                    $_ -clike $wildcardForm 
+                                } `
                                 | Sort-Object
+        
+        $msg = $completionMatches -join ", "
+        DebugMessage "params: Count=$($completionMatches.Length), values=$msg"
 
         $result = [PSCustomObject]@{
-            ReplacementIndex = $parameterElement.Extent.StartOffset + 1; # +1 for the '-'
-            ReplacementLength = $parameterElement.Extent.EndOffset - $parameterElement.Extent.StartOffset - 1;
+            ReplacementIndex = $parameterElement.Extent.StartOffset;
+            ReplacementLength = $parameterElement.Extent.EndOffset - $parameterElement.Extent.StartOffset;
             CompletionMatches = $completionMatches
         };
+    # } elseif() { # TODO: add variable expansions
+        
     }
     return $result
 }
@@ -182,7 +252,7 @@ if ($poshhumpSkipTabCompletionInstall){
             Rename-Item Function:\TabExpansion2 PoshHumpTabExpansion2Backup
         }
         
-        function TabExpansion2(){
+        function global:TabExpansion2(){
             <# Options include:
                 RelativeFilePaths - [bool]
                     Always resolve file paths using Resolve-Path -Relative.
@@ -242,7 +312,7 @@ if ($poshhumpSkipTabCompletionInstall){
                 }
 
                 
-                $poshHumpResult = PoshHumpTabExpansion2 $ast
+                $poshHumpResult = PoshHumpTabExpansion2 $ast $cursorColumn
                 if ($poshHumpResult -ne $null){
                     $results.ReplacementIndex = $poshHumpResult.ReplacementIndex
                     $results.ReplacementLength = $poshHumpResult.ReplacementLength
@@ -253,7 +323,7 @@ if ($poshhumpSkipTabCompletionInstall){
                         $results.GetType().GetProperty('CompletionMatches').SetValue($results, $collection)
                     }
                     
-                    $results.CompletionMatches.Clear() # TODO - look at inserting at front instead of clearing as this removes standard completion! Augment vs override
+                    # $results.CompletionMatches.Clear() # TODO - look at inserting at front instead of clearing as this removes standard completion! Augment vs override
                     $poshHumpResult.CompletionMatches | % { $results.CompletionMatches.Add($_)}
                 }
                 
