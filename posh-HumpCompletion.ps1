@@ -1,11 +1,11 @@
-function DebugMessage($message) {
+function local:DebugMessage($message) {
     # $threadId = [System.Threading.Thread]::CurrentThread.ManagedThreadId
     # $appDomainId = [AppDomain]::CurrentDomain.Id
     # [System.Diagnostics.Debug]::WriteLine("PoshHump: $threadId : $appDomainId :$message")
     [System.Diagnostics.Debug]::WriteLine("PoshHump: $message")
 }
 
-function GetCommandWithVerbAndHumpSuffix($commandName) {
+function local:GetCommandWithVerbAndHumpSuffix($commandName) {
     $separatorIndex = $commandName.IndexOf('-')
     if ($separatorIndex -ge 0){
         $verb = $commandName.SubString(0, $separatorIndex)
@@ -18,7 +18,7 @@ function GetCommandWithVerbAndHumpSuffix($commandName) {
         }   
     }    
 }
-function GetCommandsWithVerbAndHumpSuffix() {
+function local:GetCommandsWithVerbAndHumpSuffix() {
     # TODO - add caching
     $commandsGroupedByVerb = Get-Command `
         | ForEach-Object { GetCommandWithVerbAndHumpSuffix $_.Name} `
@@ -27,7 +27,7 @@ function GetCommandsWithVerbAndHumpSuffix() {
     $commandsGroupedByVerb | ForEach-Object { $commands[$_.Name] = $_.Group | group-object SuffixHumpForm }
     return $commands
 }
-function GetWildcardForm($suffix){
+function local:GetWildcardForm($suffix){
     # create a wildcard form of a suffix. E.g. for "AzRGr" return "Az*R*Gr*"
     if ($suffix -eq $null -or $suffix.Length -eq 0){
         return "*"
@@ -49,7 +49,7 @@ function GetWildcardForm($suffix){
 }
 $Runspace = $null
 $Powershell = $null
-function EnsureHumpCompletionCommandCache(){
+function local:EnsureHumpCompletionCommandCache(){
     if ($global:HumpCompletionCommandCache -eq $null) {
         if ($script:runspace -eq $null) {
             DebugMessage -message "loading command cache"
@@ -65,7 +65,7 @@ function EnsureHumpCompletionCommandCache(){
         }
     }
 }
-function LoadHumpCompletionCommandCacheAsync(){
+function local:LoadHumpCompletionCommandCacheAsync(){
     DebugMessage -message "LoadHumpCompletionCommandCacheAsync"
     if ($script:Runspace -eq $null) {
         DebugMessage -message "LoadHumpCompletionCommandCacheAsync - starting..."
@@ -88,7 +88,7 @@ function LoadHumpCompletionCommandCacheAsync(){
     }
 }
 
-function GetParameters($commandName){
+function local:GetParameters($commandName){
         $command = Get-Command  $commandName -ShowCommandInfo
         if ($command.CommandType -eq "Alias") {
             $command = Get-Command $command.Definition -ShowCommandInfo
@@ -102,7 +102,7 @@ function GetParameters($commandName){
             | Sort-Object
 }
 
-function PoshHumpTabExpansion2(
+function local:PoshHumpTabExpansion2(
     [System.Management.Automation.Language.Ast]$ast, 
     [int]$offset){
     
@@ -111,8 +111,7 @@ function PoshHumpTabExpansion2(
     $statements = $ast.EndBlock.Statements
     $command = $statements.PipelineElements[$statements.PipelineElements.Count-1]
     $commandName = $command.GetCommandName()
-    $commandElements = $command.CommandElements
-        DebugMessage "Command name: $commandName"
+    DebugMessage "Command name: $commandName"
 
 
     # TODO - consider extracting the Extent matching!
