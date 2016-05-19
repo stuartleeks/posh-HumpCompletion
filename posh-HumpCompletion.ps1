@@ -47,8 +47,8 @@ function GetWildcardForm($suffix){
     $result += "*"
     return $result
 }
-$Powershell = $null
 $Runspace = $null
+$Powershell = $null
 function EnsureHumpCompletionCommandCache(){
     if ($global:HumpCompletionCommandCache -eq $null) {
         if ($script:runspace -eq $null) {
@@ -158,8 +158,8 @@ function PoshHumpTabExpansion2(
                     $_.Name.StartsWith($commandInfo.SuffixHumpForm)
                 } `
                 | Select-Object -ExpandProperty Group `
+                | Where-Object { $_.Suffix -clike $suffixWildcardForm } `
                 | Select-Object -ExpandProperty Command `
-                | Where-Object { $_ -clike $wildcardForm } `
                 | Sort-Object
                 
                 

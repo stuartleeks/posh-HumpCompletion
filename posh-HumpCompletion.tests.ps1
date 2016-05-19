@@ -60,7 +60,7 @@ Describe "PoshHumpTabExpansion2 - command completion" {
 		#,(PoshHumpTabExpansion "Get-C") | Should MatchArrayOrdered @('Get-Content', 'Get-Command', 'Get-ChildItem', 'Get-CimInstance')
 		,(PoshTabExpansion2Wrapper "Get-C").CompletionMatches | Should MatchArrayOrdered @('Get-ChildItem', 'Get-CimInstance', 'Get-Command', 'Get-Content')
 	}
-	It "matches with lower-case filter" {
+	It "matches with lower-case filter refinement" {
 		# TODO - want to have this ordered by exact hump match first!
 		#,(PoshHumpTabExpansion "Get-C") | Should MatchArrayOrdered @('Get-Content', 'Get-Command', 'Get-ChildItem', 'Get-CimInstance')
 		,(PoshTabExpansion2Wrapper "Get-ChI").CompletionMatches | Should MatchArrayOrdered @('Get-ChildItem')
@@ -70,6 +70,9 @@ Describe "PoshHumpTabExpansion2 - command completion" {
 	}
 	It "does not complete when trailing spaces" {
 		,(PoshTabExpansion2Wrapper "Get-CI ").CompletionMatches | Should Be $null
+	}
+	It "matches case-insensitively on Verb" {
+		,(PoshTabExpansion2Wrapper "set-C").CompletionMatches | Should MatchArrayOrdered @('Set-Content')
 	}
 	It "sets replacement index/length for completion of simple input" {
 		$result = PoshTabExpansion2Wrapper "Set-C"
