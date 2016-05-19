@@ -18,16 +18,19 @@ Describe "GetCommandWithVerbAndHumpSuffix" {
 	}
 }
 
-Describe "GetWildcardSuffixForm" {
+Describe "GetWildcardForm" {
 	It "returns wildcard for null" {
-		GetWildcardSuffixForm $null | Should Be "*"
+		GetWildcardForm $null | Should Be "*"
 	}
 	It "returns wildcard for empty string" {
-		GetWildcardSuffixForm "" | Should Be "*"
+		GetWildcardForm "" | Should Be "*"
 	}		
 	It "returns multiple wildcard for multihump string" {
-		GetWildcardSuffixForm "AzRV" | Should Be "Az*R*V*"
-	} 
+		GetWildcardForm "AzRV" | Should Be "Az*R*V*"
+	}
+	It "ignores leading dash in parameter names" {
+		GetWildcardForm "-ABC" | Should Be "-A*B*C*"
+	}
 }
 function PoshTabExpansion2Wrapper ($line, $index = -1) {
 	$tokens = $null;
@@ -37,7 +40,7 @@ function PoshTabExpansion2Wrapper ($line, $index = -1) {
 	$ast = [System.Management.Automation.Language.Parser]::ParseInput($line, [ref]$tokens, [ref]$null)
 	PoshHumpTabExpansion2 $ast $index
 }
-Describe "PoshHumpTabExpansion2 - basic completion" {
+Describe "PoshHumpTabExpansion2 - command completion" {
 	Mock Get-Command { @( 
 				[PSCustomObject] @{'Name' = 'Get-Command'},
 				[PSCustomObject] @{'Name' = 'Get-ChildItem'},
@@ -79,13 +82,46 @@ Describe "PoshHumpTabExpansion2 - basic completion" {
 		$result.ReplacementLength | Should Be 7
 	}
 	It "sets replacement index/length for completion at the end of the input" {
-		$result = PoshTabExpansion2Wrapper "Get-ChI | Get-Co" 
+		$result = PoshTabExpansion2Wrapper "Get-ChI | Get-Co" 16
+		$result.ReplacementIndex | Should Be 10
+		$result.ReplacementLength | Should Be 6
+	}
+	It "sets replacement index/length for completion at the end of the input with parameter input" {
+		$result = PoshTabExpansion2Wrapper "Get-ChI | Get-Co foo" 16
 		$result.ReplacementIndex | Should Be 10
 		$result.ReplacementLength | Should Be 6
 	}
 }
 
+Describe "PoshHumpTabExpansion2 - parameter completion" {
+	## TODO - mock out calls to get parameters
+	Mock GetParameters -ParameterFilter {$commandName -eq "Get-Foo1"} -MockWith { @("-TestOne", "-TestTwo", "-TestThree")}
+	It "simple completion" {
+		,(PoshTabExpansion2Wrapper "Get-Help -Fu").CompletionMatches | Should MatchArrayOrdered @("-Full", "-Functionality")
+	}
+	It "matches with hump completion on capitals"{
+		,(PoshTabExpansion2Wrapper "Get-Foo1 -TT").CompletionMatches | Should MatchArrayOrdered @("-TestTwo", "-TestThree")
+	}
+	It "matches with hump completion on capitals and lowercase"{
+		,(PoshTabExpansion2Wrapper "Get-Foo1 -TTw").CompletionMatches | Should MatchArrayOrdered @("-TestTwo")
+	}
+	It "matches in the middle of the command text" {
+		$result = PoshTabExpansion2Wrapper "Get-Help -Fu -Bar" 12
+		$result.ReplacementIndex | Should Be 9
+		$result.ReplacementLength | Should Be 3
+		,$result.CompletionMatches | Should MatchArrayOrdered @("-Full", "-Functionality")
+	}
+	It "matches with hump completion on capitals"{
+		$result = PoshTabExpansion2Wrapper "Get-Foo1 -TT | Write-Host" 12
+		$result.ReplacementIndex | Should Be 9
+		$result.ReplacementLength | Should Be 3
+		,$result.CompletionMatches | Should MatchArrayOrdered @("-TestTwo", "-TestThree")
+	}
+
+}
+
+
 # TODO
-#  * add tests for complation of parameter names
+#  * add tests for completion of parameter names
 #  * add tests for completion in the middle of a string
 #  * add tests for completion of variable names

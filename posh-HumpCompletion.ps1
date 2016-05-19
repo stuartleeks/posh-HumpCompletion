@@ -27,13 +27,18 @@ function GetCommandsWithVerbAndHumpSuffix() {
     $commandsGroupedByVerb | ForEach-Object { $commands[$_.Name] = $_.Group | group-object SuffixHumpForm }
     return $commands
 }
-function GetWildcardSuffixForm($suffix){
+function GetWildcardForm($suffix){
     # create a wildcard form of a suffix. E.g. for "AzRGr" return "Az*R*Gr*"
     if ($suffix -eq $null -or $suffix.Length -eq 0){
         return "*"
     }
+    $startIndex = 1;
     $result = $suffix[0]
-    for($i=1 ; $i -lt $suffix.Length ; $i++){
+    if ($suffix[0] -eq '-'){
+        $result += $suffix[1]
+        $startIndex = 2
+    }
+    for($i=$startIndex ; $i -lt $suffix.Length ; $i++){
         if ([char]::IsUpper($suffix[$i])) {
             $result += "*"
         }
@@ -82,6 +87,21 @@ function LoadHumpCompletionCommandCacheAsync(){
         $script:iar = $script:PowerShell.BeginInvoke()
     }
 }
+
+function GetParameters($commandName){
+        $command = Get-Command  $commandName -ShowCommandInfo
+        if ($command.CommandType -eq "Alias") {
+            $command = Get-Command $command.Definition -ShowCommandInfo
+        }
+        
+        # TODO - look at whether we can determine the parameter set to be smarter about the parameters we complete
+        $command.ParameterSets `
+            | Select-Object -ExpandProperty Parameters `
+            | Select-Object -ExpandProperty Name -Unique `
+            | ForEach-Object { "-$($_)" } `
+            | Sort-Object
+}
+
 function PoshHumpTabExpansion2(
     [System.Management.Automation.Language.Ast]$ast, 
     [int]$offset){
@@ -95,6 +115,7 @@ function PoshHumpTabExpansion2(
         DebugMessage "Command name: $commandName"
 
 
+    # TODO - consider extracting the Extent matching!
     # We want to find any NamedAttributeArgumentAst objects where the Ast extent includes $offset
     $offsetInExtentPredicate = {
         param($astToTest)
@@ -114,17 +135,20 @@ function PoshHumpTabExpansion2(
         # AST chain ends with CommandAst, StringConstantExpressionAst
         
         $commandAst = $asts[$astCount-2]
-        $extentStart = $commandAst.Extent.StartOffset
-        $extentEnd = $commandAst.Extent.EndOffset
-        $commandName = $commandAst.CommandElements.Value.Substring(0, $extentEnd - $extentStart)
-        DebugMessage "CommandAst match: $($commandAst.GetCommandName()) - $($extentStart):$($extentEnd), $commandName"
+        $stringAst = $asts[$astCount-1]
+        $extentStart = $stringAst.Extent.StartOffset
+        $extentEnd = $stringAst.Extent.EndOffset
+        DebugMessage "CommandAst match: '$($commandAst.CommandElements.Value)' - $($extentStart):$($extentEnd)"
+        # $commandName = $commandAst.CommandElements.Value.Substring(0, $extentEnd - $extentStart)
+        $commandName = $ast.ToString().Substring($extentStart, $extentEnd - $extentStart)
         
         EnsureHumpCompletionCommandCache
         $commandInfo = GetCommandWithVerbAndHumpSuffix $commandName
         $verb = $commandInfo.Verb
         $suffix= $commandInfo.Suffix
-        $suffixWildcardForm = GetWildcardSuffixForm $suffix 
+        $suffixWildcardForm = GetWildcardForm $suffix 
         $wildcardForm = "$verb-$suffixWildcardForm"
+        DebugMessage "CommandName: '$commandName', wildcardForm: '$wildcardForm'"
         $commands = $global:HumpCompletionCommandCache
         if ($commands[$verb] -ne $null) {
             $completionMatches = $commands[$verb] `
@@ -143,79 +167,43 @@ function PoshHumpTabExpansion2(
             DebugMessage "cmd: Count=$($completionMatches.Length), values=$msg"
         
             $result = [PSCustomObject]@{
-                ReplacementIndex = $commandAst.Extent.StartOffset;
-                ReplacementLength = $commandAst.Extent.EndOffset - $commandAst.Extent.StartOffset;
+                ReplacementIndex = $stringAst.Extent.StartOffset;
+                ReplacementLength = $stringAst.Extent.EndOffset - $stringAst.Extent.StartOffset;
                 CompletionMatches = $completionMatches
             };
         }
-        
-    # } elseif ( $commandElements.Count -eq 1) {         
-    #     ## if 1 command element then just the command (rather than parameters)
-    #     DebugMessage "single cmd element: $commandName"      
-    #     EnsureHumpCompletionCommandCache
-        
-    #     $commandInfo = GetCommandWithVerbAndHumpSuffix $commandName
-    #     $verb = $commandInfo.Verb
-    #     $suffix= $commandInfo.Suffix
-    #     $suffixWildcardForm = GetWildcardSuffixForm $suffix 
-    #     $wildcardForm = "$verb-$suffixWildcardForm"
-    #     $commands = $global:HumpCompletionCommandCache
-    #     if ($commands[$verb] -ne $null) {
-    #         $completionMatches = $commands[$verb] `
-    #             | Where-Object { 
-    #                 # $_.Name is suffix hump form
-    #                 # Match on hump form of completion word
-    #                 $_.Name.StartsWith($commandInfo.SuffixHumpForm)
-    #             } `
-    #             | Select-Object -ExpandProperty Group `
-    #             | Select-Object -ExpandProperty Command `
-    #             | Where-Object { $_ -clike $wildcardForm } `
-    #             | Sort-Object
+    } elseif ($astCount -gt 2 `
+            -and $asts[$astCount-2] -is [System.Management.Automation.Language.CommandAst] `
+            -and $asts[$astCount-1] -is [System.Management.Automation.Language.CommandParameterAst]){
                 
-                
-    #         $msg = $completionMatches -join ", "
-    #         DebugMessage "cmd: Count=$($completionMatches.Length), values=$msg"
+        $commandAst = $asts[$astCount-2]
+        $parameterAst = $asts[$astCount-1]
+        $extentStart = $parameterAst.Extent.StartOffset
+        $extentEnd = $parameterAst.Extent.EndOffset
+        DebugMessage "ParameterAst match: '$($commandAst.CommandElements.Value)' - $($extentStart):$($extentEnd)"
         
-    #         $result = [PSCustomObject]@{
-    #             ReplacementIndex = $command.Extent.StartOffset;
-    #             ReplacementLength = $command.Extent.EndOffset - $command.Extent.StartOffset;
-    #             CompletionMatches = $completionMatches
-    #         };
-    #     }
-    } elseif ($commandElements.Count -gt 1 -and $commandElements[$commandElements.Count-1] -is [System.Management.Automation.Language.CommandParameterAst]){
-        
-        $command = Get-Command  $commandName -ShowCommandInfo
-        if ($command.CommandType -eq "Alias") {
-            $command = Get-Command $command.Definition -ShowCommandInfo
-        }
-        
-        # complete the parameter!
-        $parameterElement = $commandElements[$commandElements.Count -1]
-        $parameterName = $parameterElement.ParameterName 
-        $wildcardForm = GetWildcardSuffixForm $parameterName
-        $wildcardForm = "-" + $wildcardForm
-        DebugMessage "multi cmd element. Parameter: '$parameterName', wildcardForm: $wildcardForm"      
-        # TODO - look at whether we can determine the parameter set to be smarter about the parameters we complete
-        $completionMatches = $command.ParameterSets `
-                                | Select-Object -ExpandProperty Parameters `
-                                | Select-Object -ExpandProperty Name -Unique `
-                                | ForEach-Object { "-$($_)" } `
+        $commandName = $commandAst.CommandElements.Value
+        $parameterName = $ast.ToString().Substring($extentStart, $extentEnd - $extentStart)
+        $wildcardForm = GetWildcardForm $parameterName
+            DebugMessage "ParameterName: '$parameterName', wildcardForm: '$wildcardForm'"
+
+        $parameters = GetParameters -commandName $commandName
+
+        $completionMatches = $parameters `
                                 | Where-Object { 
                                     # DebugMessage "Match test '$_', '$wildcardForm', match $($_ -clike $wildcardForm)"
                                     $_ -clike $wildcardForm 
-                                } `
-                                | Sort-Object
+                                }
         
         $msg = $completionMatches -join ", "
         DebugMessage "params: Count=$($completionMatches.Length), values=$msg"
 
         $result = [PSCustomObject]@{
-            ReplacementIndex = $parameterElement.Extent.StartOffset;
-            ReplacementLength = $parameterElement.Extent.EndOffset - $parameterElement.Extent.StartOffset;
+            ReplacementIndex = $extentStart;
+            ReplacementLength = $extentEnd - $extentStart;
             CompletionMatches = $completionMatches
         };
     # } elseif() { # TODO: add variable expansions
-        
     }
     return $result
 }
