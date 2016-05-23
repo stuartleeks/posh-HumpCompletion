@@ -102,7 +102,7 @@ Describe "PoshHumpTabExpansion2 - command completion" {
 Describe "PoshHumpTabExpansion2 - parameter completion" {
 	Mock GetParameters -ParameterFilter {$commandName -eq "Get-Foo1"} -MockWith { @("-TestOne", "-TestTwo", "-TestThree")}
 	Mock GetParameters -ParameterFilter {$commandName -eq "Get-Help"} -MockWith { @("-Category", "-Component", "-Debug", "-Detailed", "-ErrorAction", "-ErrorVariable", "-Examples", "-Full", "-Functionality", "-InformationAction", "-InformationVariable", "-Name", "-Online", "-OutBuffer", "-OutVariable", "-Parameter", "-Path", "-PipelineVariable", "-Role", "-ShowWindow", "-Verbose", "-WarningAction", "-WarningVariable")}
-	It "simple completion" {
+	It "handles simple completion" {
 		,(PoshTabExpansion2Wrapper "Get-Help -Fu").CompletionMatches | Should MatchArrayOrdered @("-Full", "-Functionality")
 	}
 	It "matches with hump completion on capitals"{
@@ -134,8 +134,19 @@ Describe "PoshHumpTabExpansion2 - variable completion" {
 		$poshHumpCompletionTest_TestBar = "123"
 		$poshHumpCompletionTest_TestBaz = "123"
 	}
-	It "simple completion" {
-		,(PoshTabExpansion2Wrapper "`$poshHumpCompletionTest_TB").CompletionMatches | Should MatchArrayOrdered @("`$poshHumpCompletionTest_TestBar", "`$poshHumpCompletionTest_TestBaz")
+	It "handles simple completion" {
+		#                                    012345678901234567890123456789
+		$result = PoshTabExpansion2Wrapper "`$poshHumpCompletionTest_TB"
+		,($result).CompletionMatches | Should MatchArrayOrdered @("`$poshHumpCompletionTest_TestBar", "`$poshHumpCompletionTest_TestBaz")
+		$result.ReplacementIndex | Should Be 0
+		$result.ReplacementLength | Should Be 26
+	}
+	It "handles completion in the middle of a statement" {
+		#                                   0123456789012 34567890123456789012345678
+		$result = PoshTabExpansion2Wrapper "Get-Foo -Bar `$poshHumpCompletionTest_TB | Invoke-Wibble" 38 
+		,($result).CompletionMatches | Should MatchArrayOrdered @("`$poshHumpCompletionTest_TestBar", "`$poshHumpCompletionTest_TestBaz")
+		$result.ReplacementIndex | Should Be 13
+		$result.ReplacementLength | Should Be 26
 	}
 }
 
