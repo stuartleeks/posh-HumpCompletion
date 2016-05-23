@@ -80,16 +80,19 @@ Describe "PoshHumpTabExpansion2 - command completion" {
 		$result.ReplacementLength | Should Be 5
 	}
 	It "sets replacement index/length for completion at the start of the input" {
+		#                                   012345678901234567890
 		$result = PoshTabExpansion2Wrapper "Get-ChI | Get-Content" 7 
 		$result.ReplacementIndex | Should Be 0
 		$result.ReplacementLength | Should Be 7
 	}
 	It "sets replacement index/length for completion at the end of the input" {
+		#                                   0123456789012345
 		$result = PoshTabExpansion2Wrapper "Get-ChI | Get-Co" 16
 		$result.ReplacementIndex | Should Be 10
 		$result.ReplacementLength | Should Be 6
 	}
 	It "sets replacement index/length for completion at the end of the input with parameter input" {
+		#                                   01234567890123456789
 		$result = PoshTabExpansion2Wrapper "Get-ChI | Get-Co foo" 16
 		$result.ReplacementIndex | Should Be 10
 		$result.ReplacementLength | Should Be 6
@@ -109,16 +112,30 @@ Describe "PoshHumpTabExpansion2 - parameter completion" {
 		,(PoshTabExpansion2Wrapper "Get-Foo1 -TTw").CompletionMatches | Should MatchArrayOrdered @("-TestTwo")
 	}
 	It "matches in the middle of the command text" {
+		#                                   01234567890123456
 		$result = PoshTabExpansion2Wrapper "Get-Help -Fu -Bar" 12
 		$result.ReplacementIndex | Should Be 9
 		$result.ReplacementLength | Should Be 3
 		,$result.CompletionMatches | Should MatchArrayOrdered @("-Full", "-Functionality")
 	}
 	It "matches with hump completion on capitals"{
+		#                                   0123456789012345678901234
 		$result = PoshTabExpansion2Wrapper "Get-Foo1 -TT | Write-Host" 12
 		$result.ReplacementIndex | Should Be 9
 		$result.ReplacementLength | Should Be 3
 		,$result.CompletionMatches | Should MatchArrayOrdered @("-TestTwo", "-TestThree")
+	}
+}
+
+Describe "PoshHumpTabExpansion2 - variable completion" {
+	BeforeEach {
+		Get-Variable poshHumpCompletionTest_* | Remove-Variable -Force -ErrorAction SilentlyContinue
+		$poshHumpCompletionTest_TestFoo = "123"
+		$poshHumpCompletionTest_TestBar = "123"
+		$poshHumpCompletionTest_TestBaz = "123"
+	}
+	It "simple completion" {
+		,(PoshTabExpansion2Wrapper "`$poshHumpCompletionTest_TB").CompletionMatches | Should MatchArrayOrdered @("`$poshHumpCompletionTest_TestBar", "`$poshHumpCompletionTest_TestBaz")
 	}
 }
 

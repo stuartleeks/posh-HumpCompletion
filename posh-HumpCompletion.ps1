@@ -109,7 +109,11 @@ function local:PoshHumpTabExpansion2(
     DebugMessage "***** In PoshHumpTabExpansion2 - offset $offset"
     $statements = $ast.EndBlock.Statements
     $command = $statements.PipelineElements[$statements.PipelineElements.Count-1]
-    $commandName = $command.GetCommandName()
+    if ($command -is [System.Management.Automation.Language.CommandAst]){
+        $commandName = $command.GetCommandName()
+    } else {
+        $commandName = $null
+    }
     DebugMessage "Command name: $commandName"
 
 
@@ -135,8 +139,14 @@ function local:PoshHumpTabExpansion2(
             -and $asts[$astCount-2] -is [System.Management.Automation.Language.CommandAst] `
             -and $asts[$astCount-1] -is [System.Management.Automation.Language.CommandParameterAst]){
         $result = PoshHumpTabExpansion2_Parameter $asts
-    # } elseif() { # TODO: add variable expansions
+    } elseif($astCount -ge 1 `
+            -and $asts[$astCount-1] -is [System.Management.Automation.Language.VariableExpressionAst]) {
+        $result = PoshHumpTabExpansion2_Variable $asts
     }
+    
+    
+   $msg = ($result.CompletionMatches) -join ", "
+    DebugMessage "Returning: Count=$($result.CompletionMatches.Length), values=$msg"
     return $result
 }
 
@@ -201,8 +211,30 @@ function local:PoshHumpTabExpansion2_Parameter($asts){
                                 $_ -clike $wildcardForm 
                             }
     
-    $msg = $completionMatches -join ", "
-    DebugMessage "params: Count=$($completionMatches.Length), values=$msg"
+    $result = [PSCustomObject]@{
+        ReplacementIndex = $extentStart;
+        ReplacementLength = $extentEnd - $extentStart;
+        CompletionMatches = $completionMatches
+    };
+    return $result
+}
+function local:PoshHumpTabExpansion2_Variable($asts){
+    DebugMessage "************* variable completion *****************"
+    $variableAst = $asts[$astCount-1]
+    $extentStart = $variableAst.Extent.StartOffset
+    $extentEnd = $variableAst.Extent.EndOffset
+    $variableNameWithPrefix = $ast.ToString().Substring($extentStart, $extentEnd - $extentStart)
+    $variableName = $variableNameWithPrefix.TrimStart("`$")
+    $wildcardForm = GetWildcardForm $variableName
+    
+    DebugMessage "VariableAst match: '$variableName' - $($extentStart):$($extentEnd)"
+
+    $completionMatches = Get-Variable `
+                            | Select-Object -ExpandProperty Name `
+                            | Where-Object { 
+                                # DebugMessage "==== '$_' -clike '$wildcardForm' == $($_ -clike $wildcardForm)"
+                                $_ -clike $wildcardForm } `
+                            | Foreach-Object { "`$$_" }
 
     $result = [PSCustomObject]@{
         ReplacementIndex = $extentStart;
@@ -297,6 +329,7 @@ if ($poshhumpSkipTabCompletionInstall){
                 if ($psCmdlet.ParameterSetName -eq 'ScriptInputSet')
                 {
                     $ast = [System.Management.Automation.Language.Parser]::ParseInput($inputScript, [ref]$tokens, [ref]$null)
+                    # DebugMessage "Ast: $($ast.ToString())"
                 }
                 else
                 {
@@ -319,7 +352,7 @@ if ($poshhumpSkipTabCompletionInstall){
                     $poshHumpResult.CompletionMatches | % { $results.CompletionMatches.Add($_)}
                 }
                 
-                return $results
+                return $results 
             }
         }
         LoadHumpCompletionCommandCacheAsync
