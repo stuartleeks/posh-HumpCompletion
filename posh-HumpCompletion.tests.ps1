@@ -149,7 +149,3 @@ Describe "PoshHumpTabExpansion2 - variable completion" {
 		$result.ReplacementLength | Should Be 26
 	}
 }
-
-
-# TODO
-#  * add tests for completion of variable names
