@@ -19,7 +19,6 @@ function local:GetCommandWithVerbAndHumpSuffix($commandName) {
     }    
 }
 function local:GetCommandsWithVerbAndHumpSuffix() {
-    # TODO - add caching
     $commandsGroupedByVerb = Get-Command `
         | ForEach-Object { GetCommandWithVerbAndHumpSuffix $_.Name} `
         | Group-Object Verb
@@ -107,14 +106,13 @@ function local:PoshHumpTabExpansion2(
     [int]$offset){
     
     $result = $null;
-    DebugMessage "In PoshHumpTabExpansion2 - offset $offset"
+    DebugMessage "***** In PoshHumpTabExpansion2 - offset $offset"
     $statements = $ast.EndBlock.Statements
     $command = $statements.PipelineElements[$statements.PipelineElements.Count-1]
     $commandName = $command.GetCommandName()
     DebugMessage "Command name: $commandName"
 
 
-    # TODO - consider extracting the Extent matching!
     # We want to find any NamedAttributeArgumentAst objects where the Ast extent includes $offset
     $offsetInExtentPredicate = {
         param($astToTest)
@@ -132,78 +130,85 @@ function local:PoshHumpTabExpansion2(
             -and $asts[$astCount-2] -is [System.Management.Automation.Language.CommandAst] `
             -and $asts[$astCount-1] -is [System.Management.Automation.Language.StringConstantExpressionAst])    {
         # AST chain ends with CommandAst, StringConstantExpressionAst
-        
-        $commandAst = $asts[$astCount-2]
-        $stringAst = $asts[$astCount-1]
-        $extentStart = $stringAst.Extent.StartOffset
-        $extentEnd = $stringAst.Extent.EndOffset
-        DebugMessage "CommandAst match: '$($commandAst.CommandElements.Value)' - $($extentStart):$($extentEnd)"
-        # $commandName = $commandAst.CommandElements.Value.Substring(0, $extentEnd - $extentStart)
-        $commandName = $ast.ToString().Substring($extentStart, $extentEnd - $extentStart)
-        
-        EnsureHumpCompletionCommandCache
-        $commandInfo = GetCommandWithVerbAndHumpSuffix $commandName
-        $verb = $commandInfo.Verb
-        $suffix= $commandInfo.Suffix
-        $suffixWildcardForm = GetWildcardForm $suffix 
-        $wildcardForm = "$verb-$suffixWildcardForm"
-        DebugMessage "CommandName: '$commandName', wildcardForm: '$wildcardForm'"
-        $commands = $global:HumpCompletionCommandCache
-        if ($commands[$verb] -ne $null) {
-            $completionMatches = $commands[$verb] `
-                | Where-Object { 
-                    # $_.Name is suffix hump form
-                    # Match on hump form of completion word
-                    $_.Name.StartsWith($commandInfo.SuffixHumpForm)
-                } `
-                | Select-Object -ExpandProperty Group `
-                | Where-Object { $_.Suffix -clike $suffixWildcardForm } `
-                | Select-Object -ExpandProperty Command `
-                | Sort-Object
-                
-                
-            $msg = $completionMatches -join ", "
-            DebugMessage "cmd: Count=$($completionMatches.Length), values=$msg"
-        
-            $result = [PSCustomObject]@{
-                ReplacementIndex = $stringAst.Extent.StartOffset;
-                ReplacementLength = $stringAst.Extent.EndOffset - $stringAst.Extent.StartOffset;
-                CompletionMatches = $completionMatches
-            };
-        }
+       $result = PoshHumpTabExpansion2_Command $asts
     } elseif ($astCount -gt 2 `
             -and $asts[$astCount-2] -is [System.Management.Automation.Language.CommandAst] `
             -and $asts[$astCount-1] -is [System.Management.Automation.Language.CommandParameterAst]){
-                
-        $commandAst = $asts[$astCount-2]
-        $parameterAst = $asts[$astCount-1]
-        $extentStart = $parameterAst.Extent.StartOffset
-        $extentEnd = $parameterAst.Extent.EndOffset
-        DebugMessage "ParameterAst match: '$($commandAst.CommandElements.Value)' - $($extentStart):$($extentEnd)"
-        
-        $commandName = $commandAst.CommandElements.Value
-        $parameterName = $ast.ToString().Substring($extentStart, $extentEnd - $extentStart)
-        $wildcardForm = GetWildcardForm $parameterName
-            DebugMessage "ParameterName: '$parameterName', wildcardForm: '$wildcardForm'"
-
-        $parameters = GetParameters -commandName $commandName
-
-        $completionMatches = $parameters `
-                                | Where-Object { 
-                                    # DebugMessage "Match test '$_', '$wildcardForm', match $($_ -clike $wildcardForm)"
-                                    $_ -clike $wildcardForm 
-                                }
-        
-        $msg = $completionMatches -join ", "
-        DebugMessage "params: Count=$($completionMatches.Length), values=$msg"
-
-        $result = [PSCustomObject]@{
-            ReplacementIndex = $extentStart;
-            ReplacementLength = $extentEnd - $extentStart;
-            CompletionMatches = $completionMatches
-        };
+        $result = PoshHumpTabExpansion2_Parameter $asts
     # } elseif() { # TODO: add variable expansions
     }
+    return $result
+}
+
+function local:PoshHumpTabExpansion2_Command($asts){
+    $astCount = $asts.Count;
+    $commandAst = $asts[$astCount-2]
+    $stringAst = $asts[$astCount-1]
+    $extentStart = $stringAst.Extent.StartOffset
+    $extentEnd = $stringAst.Extent.EndOffset
+    DebugMessage "CommandAst match: '$($commandAst.CommandElements.Value)' - $($extentStart):$($extentEnd)"
+    $commandName = $ast.ToString().Substring($extentStart, $extentEnd - $extentStart)
+
+    EnsureHumpCompletionCommandCache
+    $commandInfo = GetCommandWithVerbAndHumpSuffix $commandName
+    $verb = $commandInfo.Verb
+    $suffix= $commandInfo.Suffix
+    $suffixWildcardForm = GetWildcardForm $suffix 
+    $wildcardForm = "$verb-$suffixWildcardForm"
+    DebugMessage "CommandName: '$commandName', wildcardForm: '$wildcardForm'"
+    $commands = $global:HumpCompletionCommandCache
+    if ($commands[$verb] -ne $null) {
+        $completionMatches = $commands[$verb] `
+            | Where-Object { 
+                # $_.Name is suffix hump form
+                # Match on hump form of completion word
+                $_.Name.StartsWith($commandInfo.SuffixHumpForm)
+            } `
+            | Select-Object -ExpandProperty Group `
+            | Where-Object { $_.Suffix -clike $suffixWildcardForm } `
+            | Select-Object -ExpandProperty Command `
+            | Sort-Object
+            
+            
+        $msg = $completionMatches -join ", "
+        DebugMessage "cmd: Count=$($completionMatches.Length), values=$msg"
+
+        $result = [PSCustomObject]@{
+            ReplacementIndex = $stringAst.Extent.StartOffset;
+            ReplacementLength = $stringAst.Extent.EndOffset - $stringAst.Extent.StartOffset;
+            CompletionMatches = $completionMatches
+        };
+        return $result
+    }
+}
+function local:PoshHumpTabExpansion2_Parameter($asts){
+    $commandAst = $asts[$astCount-2]
+    $parameterAst = $asts[$astCount-1]
+    $extentStart = $parameterAst.Extent.StartOffset
+    $extentEnd = $parameterAst.Extent.EndOffset
+    DebugMessage "ParameterAst match: '$($commandAst.CommandElements.Value)' - $($extentStart):$($extentEnd)"
+    
+    $commandName = $commandAst.CommandElements.Value
+    $parameterName = $ast.ToString().Substring($extentStart, $extentEnd - $extentStart)
+    $wildcardForm = GetWildcardForm $parameterName
+        DebugMessage "ParameterName: '$parameterName', wildcardForm: '$wildcardForm'"
+
+    $parameters = GetParameters -commandName $commandName
+
+    $completionMatches = $parameters `
+                            | Where-Object { 
+                                # DebugMessage "Match test '$_', '$wildcardForm', match $($_ -clike $wildcardForm)"
+                                $_ -clike $wildcardForm 
+                            }
+    
+    $msg = $completionMatches -join ", "
+    DebugMessage "params: Count=$($completionMatches.Length), values=$msg"
+
+    $result = [PSCustomObject]@{
+        ReplacementIndex = $extentStart;
+        ReplacementLength = $extentEnd - $extentStart;
+        CompletionMatches = $completionMatches
+    };
     return $result
 }
 
