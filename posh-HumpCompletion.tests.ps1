@@ -97,8 +97,8 @@ Describe "PoshHumpTabExpansion2 - command completion" {
 }
 
 Describe "PoshHumpTabExpansion2 - parameter completion" {
-	## TODO - mock out calls to get parameters
 	Mock GetParameters -ParameterFilter {$commandName -eq "Get-Foo1"} -MockWith { @("-TestOne", "-TestTwo", "-TestThree")}
+	Mock GetParameters -ParameterFilter {$commandName -eq "Get-Help"} -MockWith { @("-Category", "-Component", "-Debug", "-Detailed", "-ErrorAction", "-ErrorVariable", "-Examples", "-Full", "-Functionality", "-InformationAction", "-InformationVariable", "-Name", "-Online", "-OutBuffer", "-OutVariable", "-Parameter", "-Path", "-PipelineVariable", "-Role", "-ShowWindow", "-Verbose", "-WarningAction", "-WarningVariable")}
 	It "simple completion" {
 		,(PoshTabExpansion2Wrapper "Get-Help -Fu").CompletionMatches | Should MatchArrayOrdered @("-Full", "-Functionality")
 	}
@@ -125,6 +125,4 @@ Describe "PoshHumpTabExpansion2 - parameter completion" {
 
 
 # TODO
-#  * add tests for completion of parameter names
-#  * add tests for completion in the middle of a string
 #  * add tests for completion of variable names
