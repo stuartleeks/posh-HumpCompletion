@@ -42,6 +42,14 @@ If you load new modules or otherwise change the set of commands (Azure PowerShel
 
 ## Release notes
 
+### Version 0.2.0 - 23rd May 2016
+Pushed to myget feed 23rd May 2016
+
+Convert to working with ASTs instead of raw string parsing.
+With this change the tab expansion now works even when you're not at the end of the input string
+
+Added support for expansion of parameter names and variable names
+
 ### Version 0.1.4 - 20th January 2016
 Pushed to myget feed 20th January 2016
 
