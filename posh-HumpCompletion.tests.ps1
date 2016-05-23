@@ -120,7 +120,6 @@ Describe "PoshHumpTabExpansion2 - parameter completion" {
 		$result.ReplacementLength | Should Be 3
 		,$result.CompletionMatches | Should MatchArrayOrdered @("-TestTwo", "-TestThree")
 	}
-
 }
 
 
