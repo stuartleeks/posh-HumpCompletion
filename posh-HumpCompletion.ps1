@@ -53,6 +53,7 @@ function local:EnsureHumpCompletionCommandCache(){
         if ($script:runspace -eq $null) {
             DebugMessage -message "loading command cache"
             $global:HumpCompletionCommandCache = GetCommandsWithVerbAndHumpSuffix
+            DebugMessage -message "loading command cache - complete $($global:HumpCompletionCommandCache.Count)"
         } else {
             DebugMessage -message "loading command cache - wait on async load"
             $foo = $script:Runspace.AsyncWaitHandle.WaitOne()
@@ -60,7 +61,7 @@ function local:EnsureHumpCompletionCommandCache(){
             $script:Powershell.Dispose()
             $script:Runspace.Close()
             $script:Runspace = $null            
-            DebugMessage -message "loading command cache - async load commplete $($global:HumpCompletionCommandCache.Count)"
+            DebugMessage -message "loading command cache - async load complete $($global:HumpCompletionCommandCache.Count)"
         }
     }
 }
