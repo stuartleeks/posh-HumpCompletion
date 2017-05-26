@@ -43,11 +43,14 @@ If you load new modules or otherwise change the set of commands (Azure PowerShel
 ## Release notes
 
 ### Version 0.4.0 - 26th May 2017
+Pushed to PowerShell Gallery 26th May 2017
+
 
 Improve perf of command cache loading which reduces the time to be able to add completion. Changed the processing to create the cache over to C# code via Add-Type.
 
 ### Version 0.3.0 - 26th May 2017
 Pushed to PowerShell Gallery 26th May 2017
+
 
 Fix background loading
 
@@ -58,6 +61,7 @@ Will experiment with this for a bit and see which behaviour makes sense (or whet
 
 ### Version 0.2.0 - 23rd May 2016
 Pushed to myget feed 23rd May 2016
+
 
 Convert to working with ASTs instead of raw string parsing.
 With this change the tab expansion now works even when you're not at the end of the input string
