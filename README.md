@@ -42,6 +42,10 @@ If you load new modules or otherwise change the set of commands (Azure PowerShel
 
 ## Release notes
 
+### Version 0.4.0 - 26th May 2017
+
+Improve perf of command cache loading which reduces the time to be able to add completion. Changed the processing to create the cache over to C# code via Add-Type.
+
 ### Version 0.3.0 - 26th May 2017
 Pushed to PowerShell Gallery 26th May 2017
 
