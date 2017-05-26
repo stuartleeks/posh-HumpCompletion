@@ -145,17 +145,16 @@ function local:PoshHumpTabExpansion2_Command($asts) {
         DebugMessage "CommandName: '$commandName', wildcardForm: '$wildcardForm'"
         $commands = $global:HumpCompletionCommandCache
         if ($commands[$verb] -ne $null) {
-            $completionMatches = $commands[$verb] `
+            $completionMatches = $commands[$verb].GetEnumerator() `
                 | Where-Object { 
-                # $_.Name is suffix hump form
+                # $_.Key is suffix hump form
                 # Match on hump form of completion word
-                $_.Name.StartsWith($commandInfo.SuffixHumpForm)
+                $_.Key.StartsWith($commandInfo.SuffixHumpForm)
             } `
-                | Select-Object -ExpandProperty Group `
+                | Select-Object -ExpandProperty Value `
                 | Where-Object { $_.Suffix -clike $suffixWildcardForm } `
                 | Select-Object -ExpandProperty Command `
                 | Sort-Object
-            
             
             $msg = $completionMatches -join ", "
             DebugMessage "cmd: Count=$($completionMatches.Length), values=$msg"

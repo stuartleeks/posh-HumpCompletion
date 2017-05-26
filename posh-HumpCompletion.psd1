@@ -30,7 +30,7 @@ Copyright = '(c) 2017 Stuart Leeks. All rights reserved.'
 Description = 'When working with some PowerShell modules, there can be a large number of cmdlets, and the cmdlet names can get quite long. posh-HumpCompletion adds support for "hump completion". This means that it will use the capitals in the cmdlet name as the identifiers, i.e. "Get-DC<tab>" would complete for Get-DnsClient, Get-DnsClientCache, Get-DscConfiguration, Get-DomainController etc. '
 
 # Minimum version of the Windows PowerShell engine required by this module
-# PowerShellVersion = ''
+PowerShellVersion = '3.0'
 
 # Name of the Windows PowerShell host required by this module
 # PowerShellHostName = ''
