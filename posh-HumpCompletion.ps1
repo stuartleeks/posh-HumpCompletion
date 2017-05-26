@@ -1,68 +1,30 @@
-function local:DebugMessage($message) {
-    # $threadId = [System.Threading.Thread]::CurrentThread.ManagedThreadId
-    # $appDomainId = [AppDomain]::CurrentDomain.Id
-    # [System.Diagnostics.Debug]::WriteLine("PoshHump: $threadId : $appDomainId :$message")
-    [System.Diagnostics.Debug]::WriteLine("PoshHump: $message")
-}
-
-function local:GetCommandWithVerbAndHumpSuffix($commandName) {
-    $separatorIndex = $commandName.IndexOf('-')
-    if ($separatorIndex -ge 0){
-        $verb = $commandName.SubString(0, $separatorIndex)
-        $suffix = $commandName.SubString($separatorIndex+1)
-        return [PSCustomObject] @{
-            "Verb" = $verb
-            "Suffix" = $suffix
-            "SuffixHumpForm" = $suffix -creplace "[a-z]","" # case sensitive replace
-            "Command" = $commandName 
-        }   
-    }    
-}
-function local:GetCommandsWithVerbAndHumpSuffix() {
-    $commandsGroupedByVerb = Get-Command `
-        | ForEach-Object { GetCommandWithVerbAndHumpSuffix $_.Name} `
-        | Group-Object Verb
-    $commands = @{}
-    $commandsGroupedByVerb | ForEach-Object { $commands[$_.Name] = $_.Group | group-object SuffixHumpForm }
-    return $commands
-}
-function local:GetWildcardForm($suffix){
-    # create a wildcard form of a suffix. E.g. for "AzRGr" return "Az*R*Gr*"
-    if ($suffix -eq $null -or $suffix.Length -eq 0){
-        return "*"
-    }
-    $startIndex = 1;
-    $result = $suffix[0]
-    if ($suffix[0] -eq '-'){
-        $result += $suffix[1]
-        $startIndex = 2
-    }
-    for($i=$startIndex ; $i -lt $suffix.Length ; $i++){
-        if ([char]::IsUpper($suffix[$i])) {
-            $result += "*"
-        }
-        $result += $suffix[$i]
-    }
-    $result += "*"
-    return $result
-}
 $Runspace = $null
 $Powershell = $null
-function local:EnsureHumpCompletionCommandCache(){
+function local:EnsureHumpCompletionCommandCache() {
     if ($global:HumpCompletionCommandCache -eq $null) {
         if ($script:runspace -eq $null) {
             DebugMessage -message "loading command cache"
             $global:HumpCompletionCommandCache = GetCommandsWithVerbAndHumpSuffix
-            DebugMessage -message "loading command cache - complete $($global:HumpCompletionCommandCache.Count)"
-        } else {
-            DebugMessage -message "loading command cache - wait on async load"
-            $foo = $script:Runspace.AsyncWaitHandle.WaitOne()
-            $global:HumpCompletionCommandCache = $script:powershell.EndInvoke($script:iar).result
-            $script:Powershell.Dispose()
-            $script:Runspace.Close()
-            $script:Runspace = $null            
-            DebugMessage -message "loading command cache - async load complete $($global:HumpCompletionCommandCache.Count)"
+            return $true;
         }
+        else {
+            DebugMessage -message "loading command cache - wait on async load"
+            if ($script:iar.IsCompleted) {
+                $tempResult = $script:powershell.EndInvoke($script:iar)
+                DebugMessage -message "loading command cache - got  tempResult.result.Keys.Count: $($tempResult.result.Keys.Count)"
+                $global:HumpCompletionCommandCache = $tempResult.result
+                $script:Powershell.Dispose()
+                $script:Runspace.Close()
+                $script:Runspace = $null            
+                DebugMessage -message "loading command cache - async load commplete $($global:HumpCompletionCommandCache.Keys.Count)"
+                return $true;
+            }
+            else {
+                return $false;
+            }
+        }
+    } else {
+        return $true
     }
 }
 function local:LoadHumpCompletionCommandCacheAsync(){
@@ -71,48 +33,60 @@ function local:LoadHumpCompletionCommandCacheAsync(){
         DebugMessage -message "LoadHumpCompletionCommandCacheAsync - starting..."
         $script:Runspace = [RunspaceFactory]::CreateRunspace()
         $script:Runspace.Open()
+        $null = $script:Runspace.SessionStateProxy.Path.SetLocation($PSScriptRoot); ## set working dir for runspace
+
         # Set variable to prevent installation of the TabExpansion function in the created runspace
         # Otherwise we end up recursively spinning up runspaces to load the commands!
-        $script:Runspace.SessionStateProxy.SetVariable('poshhumpSkipTabCompletionInstall',$true)
+        $script:Runspace.SessionStateProxy.SetVariable('poshhumpSkipTabCompletionInstall', $true)
 
         $script:Powershell = [PowerShell]::Create()
         $script:Powershell.Runspace = $script:Runspace
 
-        $scriptBlock = {
-            $result = GetCommandsWithVerbAndHumpSuffix
-            @{ "result" = $result} # work around group enumeration as it loses the grouping!
-        }
-        $script:Powershell.AddScript($scriptBlock) | out-null
-        
+        [void]$script:Powershell.AddScript( {
+                try {
+                    # working dir is set for the runspace
+                    . "$pwd/common.ps1"
+                    DebugMessage -message "AsyncLoad: Starting..."
+                    $slCommands = GetCommandsWithVerbAndHumpSuffix
+                    DebugMessage -message "AsyncLoad: Got $($slCommands.Keys.Count) Keys"
+                    $wrappedResult = @{ "result" = $slCommands} # work around group enumeration as it loses the grouping!
+                    return $wrappedResult
+                }
+                catch {
+                    DebugMessage -message "!!!!exception in async load block"
+                    return @{ "result" = "!!exception"}
+                }
+            })
         $script:iar = $script:PowerShell.BeginInvoke()
     }
 }
 
-function local:GetParameters($commandName){
-        $command = Get-Command  $commandName -ShowCommandInfo
-        if ($command.CommandType -eq "Alias") {
-            $command = Get-Command $command.Definition -ShowCommandInfo
-        }
+function local:GetParameters($commandName) {
+    $command = Get-Command  $commandName -ShowCommandInfo
+    if ($command.CommandType -eq "Alias") {
+        $command = Get-Command $command.Definition -ShowCommandInfo
+    }
         
-        # TODO - look at whether we can determine the parameter set to be smarter about the parameters we complete
-        $command.ParameterSets `
-            | Select-Object -ExpandProperty Parameters `
-            | Select-Object -ExpandProperty Name -Unique `
-            | ForEach-Object { "-$($_)" } `
-            | Sort-Object
+    # TODO - look at whether we can determine the parameter set to be smarter about the parameters we complete
+    $command.ParameterSets `
+        | Select-Object -ExpandProperty Parameters `
+        | Select-Object -ExpandProperty Name -Unique `
+        | ForEach-Object { "-$($_)" } `
+        | Sort-Object
 }
 
 function local:PoshHumpTabExpansion2(
     [System.Management.Automation.Language.Ast]$ast, 
-    [int]$offset){
+    [int]$offset) {
     
     $result = $null;
     DebugMessage "***** In PoshHumpTabExpansion2 - offset $offset"
     $statements = $ast.EndBlock.Statements
-    $command = $statements.PipelineElements[$statements.PipelineElements.Count-1]
-    if ($command -is [System.Management.Automation.Language.CommandAst]){
+    $command = $statements.PipelineElements[$statements.PipelineElements.Count - 1]
+    if ($command -is [System.Management.Automation.Language.CommandAst]) {
         $commandName = $command.GetCommandName()
-    } else {
+    }
+    else {
         $commandName = $null
     }
     DebugMessage "Command name: $commandName"
@@ -121,78 +95,84 @@ function local:PoshHumpTabExpansion2(
     # We want to find any NamedAttributeArgumentAst objects where the Ast extent includes $offset
     $offsetInExtentPredicate = {
         param($astToTest)
-        return $offset -gt $astToTest.Extent.StartOffset -and
-                $offset -le $astToTest.Extent.EndOffset
+        return $offset -gt $astToTest.Extent.StartOffset -and 
+        $offset -le $astToTest.Extent.EndOffset
     }
     $asts = $ast.FindAll($offsetInExtentPredicate, $true)
     $astCount = $asts.Count;
     
-    $msg = ($asts | %{ $_.GetType().Name})  -join ", "
+    $msg = ($asts | % { $_.GetType().Name}) -join ", "
     DebugMessage "AstsInExtent ($astCount): $msg"
     
     
     if ($astCount -gt 2 `
-            -and $asts[$astCount-2] -is [System.Management.Automation.Language.CommandAst] `
-            -and $asts[$astCount-1] -is [System.Management.Automation.Language.StringConstantExpressionAst])    {
+            -and $asts[$astCount - 2] -is [System.Management.Automation.Language.CommandAst] `
+            -and $asts[$astCount - 1] -is [System.Management.Automation.Language.StringConstantExpressionAst]) {
         # AST chain ends with CommandAst, StringConstantExpressionAst
-       $result = PoshHumpTabExpansion2_Command $asts
-    } elseif ($astCount -gt 2 `
-            -and $asts[$astCount-2] -is [System.Management.Automation.Language.CommandAst] `
-            -and $asts[$astCount-1] -is [System.Management.Automation.Language.CommandParameterAst]){
+        $result = PoshHumpTabExpansion2_Command $asts
+    }
+    elseif ($astCount -gt 2 `
+            -and $asts[$astCount - 2] -is [System.Management.Automation.Language.CommandAst] `
+            -and $asts[$astCount - 1] -is [System.Management.Automation.Language.CommandParameterAst]) {
         $result = PoshHumpTabExpansion2_Parameter $asts
-    } elseif($astCount -ge 1 `
-            -and $asts[$astCount-1] -is [System.Management.Automation.Language.VariableExpressionAst]) {
+    }
+    elseif ($astCount -ge 1 `
+            -and $asts[$astCount - 1] -is [System.Management.Automation.Language.VariableExpressionAst]) {
         $result = PoshHumpTabExpansion2_Variable $asts
     }
     
     
-   $msg = ($result.CompletionMatches) -join ", "
+    $msg = ($result.CompletionMatches) -join ", "
     DebugMessage "Returning: Count=$($result.CompletionMatches.Length), values=$msg"
     return $result
 }
 
-function local:PoshHumpTabExpansion2_Command($asts){
+function local:PoshHumpTabExpansion2_Command($asts) {
     $astCount = $asts.Count;
-    $commandAst = $asts[$astCount-2]
-    $stringAst = $asts[$astCount-1]
+    $commandAst = $asts[$astCount - 2]
+    $stringAst = $asts[$astCount - 1]
     $extentStart = $stringAst.Extent.StartOffset
     $extentEnd = $stringAst.Extent.EndOffset
     DebugMessage "CommandAst match: '$($commandAst.CommandElements.Value)' - $($extentStart):$($extentEnd)"
     $commandName = $ast.ToString().Substring($extentStart, $extentEnd - $extentStart)
 
-    EnsureHumpCompletionCommandCache
-    $commandInfo = GetCommandWithVerbAndHumpSuffix $commandName
-    $verb = $commandInfo.Verb
-    $suffix= $commandInfo.Suffix
-    $suffixWildcardForm = GetWildcardForm $suffix 
-    $wildcardForm = "$verb-$suffixWildcardForm"
-    DebugMessage "CommandName: '$commandName', wildcardForm: '$wildcardForm'"
-    $commands = $global:HumpCompletionCommandCache
-    if ($commands[$verb] -ne $null) {
-        $completionMatches = $commands[$verb] `
-            | Where-Object { 
+    if (EnsureHumpCompletionCommandCache) {
+        $commandInfo = GetCommandWithVerbAndHumpSuffix $commandName
+        $verb = $commandInfo.Verb
+        $suffix = $commandInfo.Suffix
+        $suffixWildcardForm = GetWildcardForm $suffix 
+        $wildcardForm = "$verb-$suffixWildcardForm"
+        DebugMessage "CommandName: '$commandName', wildcardForm: '$wildcardForm'"
+        $commands = $global:HumpCompletionCommandCache
+        if ($commands[$verb] -ne $null) {
+            $completionMatches = $commands[$verb] `
+                | Where-Object { 
                 # $_.Name is suffix hump form
                 # Match on hump form of completion word
                 $_.Name.StartsWith($commandInfo.SuffixHumpForm)
             } `
-            | Select-Object -ExpandProperty Group `
-            | Where-Object { $_.Suffix -clike $suffixWildcardForm } `
-            | Select-Object -ExpandProperty Command `
-            | Sort-Object
+                | Select-Object -ExpandProperty Group `
+                | Where-Object { $_.Suffix -clike $suffixWildcardForm } `
+                | Select-Object -ExpandProperty Command `
+                | Sort-Object
             
             
-        $msg = $completionMatches -join ", "
-        DebugMessage "cmd: Count=$($completionMatches.Length), values=$msg"
+            $msg = $completionMatches -join ", "
+            DebugMessage "cmd: Count=$($completionMatches.Length), values=$msg"
 
-        $result = [PSCustomObject]@{
-            ReplacementIndex = $stringAst.Extent.StartOffset;
-            ReplacementLength = $stringAst.Extent.EndOffset - $stringAst.Extent.StartOffset;
-            CompletionMatches = $completionMatches
-        };
-        return $result
+            $result = [PSCustomObject]@{
+                ReplacementIndex  = $stringAst.Extent.StartOffset;
+                ReplacementLength = $stringAst.Extent.EndOffset - $stringAst.Extent.StartOffset;
+                CompletionMatches = $completionMatches
+            };
+            return $result
+        }
+    }
+    else {
+        DebugMessage -message "No command cache"
     }
 }
-function local:PoshHumpTabExpansion2_Parameter($asts){
+function local:PoshHumpTabExpansion2_Parameter($asts) {
     $commandAst = $asts[$astCount-2]
     $parameterAst = $asts[$astCount-1]
     $extentStart = $parameterAst.Extent.StartOffset
@@ -202,26 +182,26 @@ function local:PoshHumpTabExpansion2_Parameter($asts){
     $commandName = $commandAst.CommandElements.Value
     $parameterName = $ast.ToString().Substring($extentStart, $extentEnd - $extentStart)
     $wildcardForm = GetWildcardForm $parameterName
-        DebugMessage "ParameterName: '$parameterName', wildcardForm: '$wildcardForm'"
+    DebugMessage "ParameterName: '$parameterName', wildcardForm: '$wildcardForm'"
 
     $parameters = GetParameters -commandName $commandName
 
     $completionMatches = $parameters `
-                            | Where-Object { 
-                                # DebugMessage "Match test '$_', '$wildcardForm', match $($_ -clike $wildcardForm)"
-                                $_ -clike $wildcardForm 
-                            }
+        | Where-Object { 
+        # DebugMessage "Match test '$_', '$wildcardForm', match $($_ -clike $wildcardForm)"
+        $_ -clike $wildcardForm 
+    }
     
     $result = [PSCustomObject]@{
-        ReplacementIndex = $extentStart;
+        ReplacementIndex  = $extentStart;
         ReplacementLength = $extentEnd - $extentStart;
         CompletionMatches = $completionMatches
     };
     return $result
 }
-function local:PoshHumpTabExpansion2_Variable($asts){
+function local:PoshHumpTabExpansion2_Variable($asts) {
     DebugMessage "************* variable completion *****************"
-    $variableAst = $asts[$astCount-1]
+    $variableAst = $asts[$astCount - 1]
     $extentStart = $variableAst.Extent.StartOffset
     $extentEnd = $variableAst.Extent.EndOffset
     $variableNameWithPrefix = $ast.ToString().Substring($extentStart, $extentEnd - $extentStart)
@@ -231,14 +211,14 @@ function local:PoshHumpTabExpansion2_Variable($asts){
     DebugMessage "VariableAst match: '$variableName' - $($extentStart):$($extentEnd)"
 
     $completionMatches = Get-Variable `
-                            | Select-Object -ExpandProperty Name `
-                            | Where-Object { 
-                                # DebugMessage "==== '$_' -clike '$wildcardForm' == $($_ -clike $wildcardForm)"
-                                $_ -clike $wildcardForm } `
-                            | Foreach-Object { "`$$_" }
+        | Select-Object -ExpandProperty Name `
+        | Where-Object { 
+        # DebugMessage "==== '$_' -clike '$wildcardForm' == $($_ -clike $wildcardForm)"
+        $_ -clike $wildcardForm } `
+        | Foreach-Object { "`$$_" }
 
     $result = [PSCustomObject]@{
-        ReplacementIndex = $extentStart;
+        ReplacementIndex  = $extentStart;
         ReplacementLength = $extentEnd - $extentStart;
         CompletionMatches = $completionMatches
     };
@@ -252,13 +232,13 @@ function Clear-HumpCompletionCommandCache() {
     DebugMessage -message "PoshHumpTabExpansion:clearing command cache"
     $global:HumpCompletionCommandCache = $null
 }
-function Stop-HumpCompletion(){
+function Stop-HumpCompletion() {
     [Cmdletbinding()]
     param()
 
     $global:HumpCompletionEnabled = $false
 }
-function Start-HumpCompletion(){
+function Start-HumpCompletion() {
     [Cmdletbinding()]
     param()
     
@@ -267,9 +247,10 @@ function Start-HumpCompletion(){
 
 # install the handler!
 DebugMessage -message "Installing: Test PoshHumpTabExpansion2Backup function"
-if ($poshhumpSkipTabCompletionInstall){
+if ($poshhumpSkipTabCompletionInstall) {
     DebugMessage -message "Skipping tab expansion installation"
-} else {
+}
+else {
     if (-not (Test-Path Function:\PoshHumpTabExpansion2Backup)) {
 
         if (Test-Path Function:\TabExpansion2) {
@@ -277,7 +258,7 @@ if ($poshhumpSkipTabCompletionInstall){
             Rename-Item Function:\TabExpansion2 PoshHumpTabExpansion2Backup
         }
         
-        function global:TabExpansion2(){
+        function global:TabExpansion2() {
             <# Options include:
                 RelativeFilePaths - [bool]
                     Always resolve file paths using Resolve-Path -Relative.
@@ -309,17 +290,14 @@ if ($poshhumpSkipTabCompletionInstall){
                 [Parameter(ParameterSetName = 'AstInputSet', Position = 3)]
                 [Hashtable] $options = $null
             )
-            End
-            {
-                if ($psCmdlet.ParameterSetName -eq 'ScriptInputSet')
-                {
+            End {
+                if ($psCmdlet.ParameterSetName -eq 'ScriptInputSet') {
                     $results = [System.Management.Automation.CommandCompletion]::CompleteInput(
                         <#inputScript#>  $inputScript,
                         <#cursorColumn#> $cursorColumn,
                         <#options#>      $options)
                 }
-                else
-                {
+                else {
                     $results = [System.Management.Automation.CommandCompletion]::CompleteInput(
                         <#ast#>              $ast,
                         <#tokens#>           $tokens,
@@ -327,19 +305,17 @@ if ($poshhumpSkipTabCompletionInstall){
                         <#options#>          $options)
                 }
                 
-                if ($psCmdlet.ParameterSetName -eq 'ScriptInputSet')
-                {
+                if ($psCmdlet.ParameterSetName -eq 'ScriptInputSet') {
                     $ast = [System.Management.Automation.Language.Parser]::ParseInput($inputScript, [ref]$tokens, [ref]$null)
                     # DebugMessage "Ast: $($ast.ToString())"
                 }
-                else
-                {
+                else {
                     $cursorColumn = $positionOfCursor.Offset
                 }
 
                 
                 $poshHumpResult = PoshHumpTabExpansion2 $ast $cursorColumn
-                if ($poshHumpResult -ne $null){
+                if ($poshHumpResult -ne $null) {
                     $results.ReplacementIndex = $poshHumpResult.ReplacementIndex
                     $results.ReplacementLength = $poshHumpResult.ReplacementLength
                     
