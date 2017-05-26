@@ -1,6 +1,7 @@
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path).Replace(".tests.", ".")
 $global:poshhumpSkipTabCompletionInstall = $true
+$global:poshhumpLoadCommandsSync = $true
 . "$here\common.ps1"
 . "$here\$sut"
 
@@ -34,6 +35,7 @@ Describe "GetWildcardForm" {
 	}
 }
 function PoshTabExpansion2Wrapper ($line, $index = -1) {
+	Clear-HumpCompletionCommandCache
 	$tokens = $null;
 	if ($index -eq -1) {
 		$index = $line.Length

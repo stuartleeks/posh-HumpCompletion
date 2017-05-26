@@ -66,9 +66,9 @@ public class Utils
 	{
 		return commandNames.Select(c => Utils.ConvertToSummary(c))
 			.Where(o=>o!=null)
-			.GroupBy(c => new TempKey { Verb = c.Verb, SuffixHumpForm =  c.SuffixHumpForm })
+			.GroupBy(c => new TempKey { Verb = c.Verb.ToLowerInvariant(), SuffixHumpForm =  c.SuffixHumpForm })
 			.GroupBy(c => c.Key.Verb)
-			.ToDictionary(g => g.Key, g => g.ToDictionary(g2 => g2.Key.SuffixHumpForm, g2 => g2.ToList()))
+			.ToDictionary(g => g.Key.ToLowerInvariant(), g => g.ToDictionary(g2 => g2.Key.SuffixHumpForm, g2 => g2.ToList()))
 			;
 	}
 	public static string GetWildCardForm(string suffix)
@@ -117,7 +117,7 @@ function GetCommandWithVerbAndHumpSuffix($commandName) {
 }
 function GetCommandsWithVerbAndHumpSuffix() {
     $rawCommands = Get-Command
-	$commandNames = [string[]]($rawCommands | Select-Object -ExcludeProperty Name)
+	$commandNames = [string[]]($rawCommands | Select-Object -ExpandProperty Name)
 	return [Utils]::GroupCommands($commandNames)
 
     # DebugMessage -message "!!!!RawCommands count $($rawCommands.Length)"

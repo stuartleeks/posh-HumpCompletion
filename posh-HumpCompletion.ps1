@@ -2,9 +2,10 @@ $Runspace = $null
 $Powershell = $null
 function local:EnsureHumpCompletionCommandCache() {
     if ($global:HumpCompletionCommandCache -eq $null) {
-        if ($script:runspace -eq $null) {
+        if (($script:runspace -eq $null) -or ($poshhumpLoadCommandsSync) ) {
             DebugMessage -message "loading command cache"
             $global:HumpCompletionCommandCache = GetCommandsWithVerbAndHumpSuffix
+            DebugMessage -message "loading command cache - load complete $($global:HumpCompletionCommandCache.Keys.Count)"
             return $true;
         }
         else {
@@ -16,7 +17,7 @@ function local:EnsureHumpCompletionCommandCache() {
                 $script:Powershell.Dispose()
                 $script:Runspace.Close()
                 $script:Runspace = $null            
-                DebugMessage -message "loading command cache - async load commplete $($global:HumpCompletionCommandCache.Keys.Count)"
+                DebugMessage -message "loading command cache - async load complete $($global:HumpCompletionCommandCache.Keys.Count)"
                 return $true;
             }
             else {
@@ -24,6 +25,7 @@ function local:EnsureHumpCompletionCommandCache() {
             }
         }
     } else {
+        DebugMessage -message "got command cache"
         return $true
     }
 }
@@ -101,7 +103,7 @@ function local:PoshHumpTabExpansion2(
     $asts = $ast.FindAll($offsetInExtentPredicate, $true)
     $astCount = $asts.Count;
     
-    $msg = ($asts | % { $_.GetType().Name}) -join ", "
+    $msg = ($asts | ForEach-Object { $_.GetType().Name}) -join ", "
     DebugMessage "AstsInExtent ($astCount): $msg"
     
     
@@ -144,8 +146,11 @@ function local:PoshHumpTabExpansion2_Command($asts) {
         $wildcardForm = "$verb-$suffixWildcardForm"
         DebugMessage "CommandName: '$commandName', wildcardForm: '$wildcardForm'"
         $commands = $global:HumpCompletionCommandCache
-        if ($commands[$verb] -ne $null) {
-            $completionMatches = $commands[$verb].GetEnumerator() `
+        $verbLower = $verb.ToLowerInvariant()
+        DebugMessage "Cache keys: $($commands.Keys.Count)"
+        DebugMessage "Cache keys: $([string]::Join(',', $commands.Keys))"
+        if ($commands[$verbLower] -ne $null) {
+            $completionMatches = $commands[$verbLower].GetEnumerator() `
                 | Where-Object { 
                 # $_.Key is suffix hump form
                 # Match on hump form of completion word
@@ -165,6 +170,9 @@ function local:PoshHumpTabExpansion2_Command($asts) {
                 CompletionMatches = $completionMatches
             };
             return $result
+        }
+        else{
+            DebugMessage -message "No matching verb $verbLower"
         }
     }
     else {
@@ -325,7 +333,7 @@ else {
                     }
                     
                     # $results.CompletionMatches.Clear() # TODO - look at inserting at front instead of clearing as this removes standard completion! Augment vs override
-                    $poshHumpResult.CompletionMatches | % { $results.CompletionMatches.Add($_)}
+                    $poshHumpResult.CompletionMatches | ForEach-Object { $results.CompletionMatches.Add($_)}
                 }
                 
                 return $results 
