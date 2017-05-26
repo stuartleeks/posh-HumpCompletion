@@ -42,6 +42,16 @@ If you load new modules or otherwise change the set of commands (Azure PowerShel
 
 ## Release notes
 
+### Version 0.3.0 - 26th May 2017
+Pushed to PowerShell Gallery 26th May 2017
+
+Fix background loading
+
+
+Change the behaviour of completion so that it no longer blocks if the background load hasn't completed, instead you get no completion. 
+Will experiment with this for a bit and see which behaviour makes sense (or whether it should be an option)
+
+
 ### Version 0.2.0 - 23rd May 2016
 Pushed to myget feed 23rd May 2016
 
