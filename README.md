@@ -15,8 +15,10 @@ You can install [posh-HumpCompletion](https://www.powershellgallery.com/packages
 
 ```powershell
 Install-Module -Name posh-HumpCompletion
+
 ```
 
+<!--
 ### Chocolatey
 Make sure you have [chocolatey](https://chocolatey.org) installed.
 
@@ -24,6 +26,7 @@ Currently the installation is only on a myget feed, so install using:
 ```powershell
 choco install posh-HumpCompletion -source "https://www.myget.org/F/posh-humpcompletion/api/v2" -pre
 ```
+-->
 
 ## Instructions
 Hopefully this is fairly simple to use!
