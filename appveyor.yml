@@ -1,11 +1,20 @@
 version: 1.0.{build}
 image: WMF 5
+# init:
+#   - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+# on_finish:
+#   - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
 install:
-- ps: >-
+- ps:
     Get-PackageProvider -Name NuGet -Force
 
     Install-Module -Name Pester -Force
 
     Install-Module -Name PesterMatchArray -Force
+
+    Import-Module -Name Pester
+
+    Import-Module -Name PesterMatchArray
 build_script:
+- ps: Get-Module -Name Pester*
 - ps: Invoke-Pester -EnableExit
