@@ -24,12 +24,13 @@ function local:EnsureHumpCompletionCommandCache() {
                 return $false;
             }
         }
-    } else {
+    }
+    else {
         DebugMessage -message "got command cache"
         return $true
     }
 }
-function local:LoadHumpCompletionCommandCacheAsync(){
+function local:LoadHumpCompletionCommandCacheAsync() {
     DebugMessage -message "LoadHumpCompletionCommandCacheAsync"
     if ($script:Runspace -eq $null) {
         DebugMessage -message "LoadHumpCompletionCommandCacheAsync - starting..."
@@ -62,7 +63,6 @@ function local:LoadHumpCompletionCommandCacheAsync(){
         $script:iar = $script:PowerShell.BeginInvoke()
     }
 }
-
 function local:GetParameters($commandName) {
     $command = Get-Command  $commandName -ShowCommandInfo
     if ($command.CommandType -eq "Alias") {
@@ -76,7 +76,6 @@ function local:GetParameters($commandName) {
         | ForEach-Object { "-$($_)" } `
         | Sort-Object
 }
-
 function local:PoshHumpTabExpansion2(
     [System.Management.Automation.Language.Ast]$ast, 
     [int]$offset) {
@@ -93,7 +92,6 @@ function local:PoshHumpTabExpansion2(
     }
     DebugMessage "Command name: $commandName"
 
-
     # We want to find any NamedAttributeArgumentAst objects where the Ast extent includes $offset
     $offsetInExtentPredicate = {
         param($astToTest)
@@ -105,7 +103,6 @@ function local:PoshHumpTabExpansion2(
     
     $msg = ($asts | ForEach-Object { $_.GetType().Name}) -join ", "
     DebugMessage "AstsInExtent ($astCount): $msg"
-    
     
     if ($astCount -gt 2 `
             -and $asts[$astCount - 2] -is [System.Management.Automation.Language.CommandAst] `
@@ -128,7 +125,6 @@ function local:PoshHumpTabExpansion2(
     DebugMessage "Returning: Count=$($result.CompletionMatches.Length), values=$msg"
     return $result
 }
-
 function local:PoshHumpTabExpansion2_Command($asts) {
     $astCount = $asts.Count;
     $commandAst = $asts[$astCount - 2]
@@ -171,7 +167,7 @@ function local:PoshHumpTabExpansion2_Command($asts) {
             };
             return $result
         }
-        else{
+        else {
             DebugMessage -message "No matching verb $verbLower"
         }
     }
@@ -180,8 +176,8 @@ function local:PoshHumpTabExpansion2_Command($asts) {
     }
 }
 function local:PoshHumpTabExpansion2_Parameter($asts) {
-    $commandAst = $asts[$astCount-2]
-    $parameterAst = $asts[$astCount-1]
+    $commandAst = $asts[$astCount - 2]
+    $parameterAst = $asts[$astCount - 1]
     $extentStart = $parameterAst.Extent.StartOffset
     $extentEnd = $parameterAst.Extent.EndOffset
     DebugMessage "ParameterAst match: '$($commandAst.CommandElements.Value)' - $($extentStart):$($extentEnd)"
@@ -231,7 +227,6 @@ function local:PoshHumpTabExpansion2_Variable($asts) {
     };
     return $result
 }
-
 function Clear-HumpCompletionCommandCache() {
     [Cmdletbinding()]
     param()
@@ -251,7 +246,6 @@ function Start-HumpCompletion() {
     
     $global:HumpCompletionEnabled = $true
 }
-
 # install the handler!
 DebugMessage -message "Installing: Test PoshHumpTabExpansion2Backup function"
 if ($poshhumpSkipTabCompletionInstall) {
@@ -319,7 +313,6 @@ else {
                 else {
                     $cursorColumn = $positionOfCursor.Offset
                 }
-
                 
                 $poshHumpResult = PoshHumpTabExpansion2 $ast $cursorColumn
                 if ($poshHumpResult -ne $null) {

@@ -117,37 +117,9 @@ function GetCommandWithVerbAndHumpSuffix($commandName) {
 }
 function GetCommandsWithVerbAndHumpSuffix() {
     $rawCommands = Get-Command
-	$commandNames = [string[]]($rawCommands | Select-Object -ExpandProperty Name)
-	return [Utils]::GroupCommands($commandNames)
-
-    # DebugMessage -message "!!!!RawCommands count $($rawCommands.Length)"
-    # $commandsGroupedByVerb = Get-Command `
-    #     | ForEach-Object { GetCommandWithVerbAndHumpSuffix $_.Name} `
-    #     | Group-Object Verb
-    # $commands = @{}
-    # $commandsGroupedByVerb | ForEach-Object { $commands[$_.Name] = $_.Group | group-object SuffixHumpForm }
-    # DebugMessage -message "!!!!Commands: $($commands.Length). KeyCount: $($commands.Keys.Count)"
-    # # return @(1,2,3)
-    # return $commands
+    $commandNames = [string[]]($rawCommands | Select-Object -ExpandProperty Name)
+    return [Utils]::GroupCommands($commandNames)
 }
 function GetWildcardForm($suffix) {
     return [Utils]::GetWildCardForm($suffix)
-	# # create a wildcard form of a suffix. E.g. for "AzRGr" return "Az*R*Gr*"
-    # if ($suffix -eq $null -or $suffix.Length -eq 0) {
-    #     return "*"
-    # }
-    # $startIndex = 1;
-    # $result = $suffix[0]
-    # if ($suffix[0] -eq '-') {
-    #     $result += $suffix[1]
-    #     $startIndex = 2
-    # }
-    # for ($i = $startIndex ; $i -lt $suffix.Length ; $i++) {
-    #     if ([char]::IsUpper($suffix[$i])) {
-    #         $result += "*"
-    #     }
-    #     $result += $suffix[$i]
-    # }
-    # $result += "*"
-    # return $result
 }
