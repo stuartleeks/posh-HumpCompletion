@@ -33,8 +33,8 @@ Hopefully this is fairly simple to use!
 
 If you have a command that you want to complete for then you can type the capitals in the name and then Tab to complete.
 
-E.g. for Get-AzureResourceGroup you can use `Get-ARG<tab>`
-Repeated tabs will cycle matches (in this case, Get-AzureResourceGroupDeployment etc)
+E.g. for Get-AzureRmResourceGroup you can use `Get-ARRG<tab>`
+Repeated tabs will cycle matches (in this case, Get-AzureRmResourceGroupDeployment etc)
 
 ![posh-HumpCompletion in action](images/posh-HumpCompletion.gif)
 
