@@ -1,44 +1,27 @@
-	// Available variables which can be used inside of strings.
-// ${workspaceRoot}: the root folder of the team
-// ${file}: the current opened file
-// ${fileBasename}: the current opened file's basename
-// ${fileDirname}: the current opened file's dirname
-// ${fileExtname}: the current opened file's extension
-// ${cwd}: the current working directory of the spawned process
 {
-	"version": "0.1.0",
-	"command": "powershell",
-	"isShellCommand": true,
-	"showOutput": "silent",
-	"suppressTaskName": true,
-	"tasks": [
-		{
-			"taskName": "Test",
-			"isTestCommand": true,
-			"args": [
-				// weird as it seems, we're passing these as separate params as otherwise 
-				// VSCode will put them in quotes and then PowerShell no longer recognises 
-				// them as switches!
-				"-ExecutionPolicy", "RemoteSigned",
-				"-Command", "${workspaceRoot}\\RunPester.ps1"
-			],
-			"problemMatcher": {
-				"owner": "pester",
-				"pattern": {
-					"regexp": "(.+);(.+);(.*)",
-					"file": 1,
-					"line": 2,
-					"message": 3					
-				}
-			}
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "command": "dotnet build src",
+            "type": "shell",
+			"group":"build",
+            "presentation": {
+                "reveal": "silent"
+            },
+            "problemMatcher": "$msCompile"
 		},
-		{
-			"taskName": "Package",
-			"isBuildCommand": true,
-			"args": [
-				"-ExecutionPolicy", "RemoteSigned",
-				"-Command", "${workspaceRoot}\\BuildPackage.ps1"
-			]
-		}
-	]
+        {
+            "label": "test",
+            "command": "dotnet test src/posh-HumpCompletion.Tests",
+            "type": "shell",
+			"group": "test",
+            "presentation": {
+                "reveal": "silent"
+            },
+            "problemMatcher": "$msCompile"
+		},		
+    ]
 }
