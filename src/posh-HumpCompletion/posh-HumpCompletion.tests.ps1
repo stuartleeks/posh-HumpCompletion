@@ -18,8 +18,8 @@ function PoshTabExpansion2Wrapper ($line, $index = -1) {
 
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-Add-Type -Path "$here\bin\Debug\netstandard2.0\posh-HumpCompletion.dll"
-Add-Type -Path "$here\..\posh-HumpCompletion.TestHelpers\bin\Debug\netstandard2.0\posh-HumpCompletion.TestHelpers.dll"
+Add-Type -Path "$here\bin\Release\netstandard2.0\posh-HumpCompletion.dll"
+Add-Type -Path "$here\..\posh-HumpCompletion.TestHelpers\bin\Release\netstandard2.0\posh-HumpCompletion.TestHelpers.dll"
 
 Describe "PoshHumpTabExpansion2 - command completion" {
     $helper = New-Object -TypeName "PoshHumpCompletion.TestHelpers.MockedCompletionInvoker"
