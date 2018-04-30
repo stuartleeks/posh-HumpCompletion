@@ -100,7 +100,7 @@ public class Utils
 }
 "@
 
-Add-Type -TypeDefinition $source -Language CSharpVersion3
+Add-Type -TypeDefinition $source -Language CSharp
 
 function GetCommandWithVerbAndHumpSuffix($commandName) {
     $separatorIndex = $commandName.IndexOf('-')

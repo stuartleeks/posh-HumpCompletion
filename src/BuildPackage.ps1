@@ -1,1 +1,1 @@
-.\tools\NuGet.exe pack posh-HumpCompletion.nuspec
+.\tools\NuGet.exe pack src\posh-HumpCompletion.nuspec
