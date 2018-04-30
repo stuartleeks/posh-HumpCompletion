@@ -1,7 +1,7 @@
 @{
     RootModule             = 'posh-HumpCompletion.psm1'
     NestedModules          = @("posh-HumpCompletion.dll")
-    ModuleVersion          = '0.5.0-preview1'
+    ModuleVersion          = '0.5.0'
     GUID                   = '39a47162-82d7-400b-89b6-3400bb377681'
     Author                 = 'Stuart Leeks'
     CompanyName            = 'Stuart Leeks'
@@ -21,6 +21,7 @@
             Tags       = @('tab-completion', 'completion')
             LicenseUri = 'https://github.com/stuartleeks/posh-HumpCompletion/blob/master/LICENSE.md'
             ProjectUri = 'https://github.com/stuartleeks/posh-HumpCompletion'
+            Prerelease = 'preview1'
         }
     }
 }
