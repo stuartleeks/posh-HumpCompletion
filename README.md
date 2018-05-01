@@ -46,6 +46,12 @@ If you load new modules or otherwise change the set of commands (Azure PowerShel
 
 ## Release notes
 
+### Version 0.4.1 - 30th April 2018
+
+Pushed to PowerShell Gallery 26th May 2017
+
+Fix up the Add-Type command to work on vanilla Windows Server 2016 and Windows 10 installations without .NET 3.5 enabled.
+
 ### Version 0.4.0 - 26th May 2017
 
 Pushed to PowerShell Gallery 26th May 2017
