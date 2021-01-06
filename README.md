@@ -14,7 +14,12 @@ You can install [posh-HumpCompletion](https://www.powershellgallery.com/packages
 
 ```powershell
 Install-Module -Name posh-HumpCompletion
+```
 
+Then run the following to start it, optionally add this call to your [Powershell Profile](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_profiles?view=powershell-7.1) to load it by default.
+
+```
+Import-Module posh-HumpCompletion
 ```
 
 <!--
