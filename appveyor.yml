@@ -10,11 +10,7 @@ install:
 
     Install-Module -Name Pester -Force
 
-    Install-Module -Name PesterMatchArray -Force
-
     Import-Module -Name Pester
-
-    Import-Module -Name PesterMatchArray
 build_script:
 - ps: Get-Module -Name Pester*
 - ps: Invoke-Pester -EnableExit
