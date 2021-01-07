@@ -95,7 +95,7 @@ FileList = @('posh-HumpCompletion.ps1', 'posh-HumpCompletion.psm1', 'common.ps1'
             Tags = @('tab-completion', 'completion')
     
             # A URL to the license for this module.
-            LicenseUri = 'https://github.com/stuartleeks/posh-HumpCompletion/blob/master/LICENSE.md'
+            LicenseUri = 'https://github.com/stuartleeks/posh-HumpCompletion/blob/main/LICENSE.md'
     
             # A URL to the main website for this project.
             ProjectUri = 'https://github.com/stuartleeks/posh-HumpCompletion'
